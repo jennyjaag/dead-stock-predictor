@@ -12,7 +12,7 @@ st.selectbox("Currency", ["$", "£", "€"], key="currency")
 
 st.divider()
 st.subheader("Plan")
-st.toggle("ClearShelf Pro (unlocks the Trade-show buy AI)", key="pro_plan")
+st.toggle("EquiSphere Pro (unlocks the Trade-show buy AI)", key="pro_plan")
 st.caption("Demo: toggling this simulates the paid Pro plan. Real billing comes later.")
 
 st.divider()

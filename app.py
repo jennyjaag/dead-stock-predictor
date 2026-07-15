@@ -1,5 +1,5 @@
 """
-ClearShelf — dead-stock intelligence for independent tack shops.
+EquiSphere — dead-stock intelligence for independent tack shops.
 
 Entry point: sets the theme, shared state and the grouped sidebar navigation.
 Each tool lives in its own file under views/ ; all the analysis is unchanged
@@ -13,7 +13,7 @@ import streamlit as st
 
 import cs_lib
 
-st.set_page_config(page_title="ClearShelf", page_icon="🐴", layout="wide")
+st.set_page_config(page_title="EquiSphere", page_icon="🐴", layout="wide")
 
 cs_lib.init_state()
 cs_lib.inject_css()

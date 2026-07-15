@@ -1,4 +1,4 @@
-# Putting ClearShelf online (shareable link)
+# Putting EquiSphere online (shareable link)
 
 Goal: turn the local app into a private web link (like `clearshelf.streamlit.app`) you and shop owners can open from any browser. It's free. The three accounts/steps below are the only parts I can't do for you (they need your login).
 
@@ -66,7 +66,7 @@ smtp_host = "smtp.gmail.com"
 smtp_port = 587
 smtp_user = "you@yourdomain.com"
 smtp_pass = "an-app-password"      # use an app password, not your real one
-from = "ClearShelf <you@yourdomain.com>"
+from = "EquiSphere <you@yourdomain.com>"
 ```
 
 Until that's set, the Email button politely tells the user to download the CSV/Excel

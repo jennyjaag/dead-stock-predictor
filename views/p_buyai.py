@@ -10,7 +10,7 @@ cs_lib.page_title("Trade-show buy AI",
                   "The cause of dead stock, solved upstream.",
                   demo=(st.session_state.get("kind") == "demo"))
 cs_lib.require_pro(
-    "Trade-show buy AI", "Included in ClearShelf Pro — ~$79/mo",
+    "Trade-show buy AI", "Included in EquiSphere Pro — ~$79/mo",
     ["A ready-to-order buy list with the exact quantity per line, sized to ~4 months of cover",
      "Demand momentum by category — buy ahead of what's heating up, ease off what's cooling",
      "A 'stop buying' list that kills dead stock before the order goes in",

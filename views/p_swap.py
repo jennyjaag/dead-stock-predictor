@@ -11,7 +11,7 @@ import cs_lib
 
 cs_lib.page_title("Dead-stock swap network",
                   "Your dead stock is someone else's bestseller — different state, different discipline. "
-                  "ClearShelf matches shop-to-shop and prices the swap.",
+                  "EquiSphere matches shop-to-shop and prices the swap.",
                   demo=True)
 cs_lib.problem_note("Instead of discounting dead stock to zero, <b>trade it</b> to a shop that sells that brand. "
                     "Turns frozen cash into moving cash — and every swap deepens the data network.")
@@ -56,7 +56,7 @@ def best_match(item):
 def contact(store, item):
     st.markdown("**To:** {}".format(store))
     default = ("Hi {} — I have {} in stock that you might be selling well. "
-               "Open to a swap or sale through ClearShelf?".format(store, item))
+               "Open to a swap or sale through EquiSphere?".format(store, item))
     msg = st.text_area("Message", value=default, key="swap_msg")
     if st.button("Send message", type="primary"):
         cs_lib.add_message(store, msg, "you")
@@ -136,7 +136,7 @@ cs_lib.how_it_works([
     "Your dead-stock list (supply) is matched against each partner shop's brands & categories (demand).",
     "Different state / discipline scores higher — no channel conflict, they sell what you can't.",
     "The AI prices a fair swap or cash offer from the network's real sell-through.",
-    "Message the shop in-app, agree the trade, and ClearShelf handles labels, payment split and stock sync.",
+    "Message the shop in-app, agree the trade, and EquiSphere handles labels, payment split and stock sync.",
 ])
 cs_lib.pricing_note("Small fee per completed swap. Turns frozen cash into moving cash — the feature retailers "
                     "stay for, and every swap feeds the data network.")

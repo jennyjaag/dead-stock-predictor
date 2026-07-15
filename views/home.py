@@ -8,7 +8,7 @@ import cs_lib
 # First run — no data yet: show the upload area + demo button right here
 # ---------------------------------------------------------------------------
 if not cs_lib.has_data():
-    cs_lib.page_title("Welcome to ClearShelf",
+    cs_lib.page_title("Welcome to EquiSphere",
                       "Load your shop's data to see what's turning into dead stock — and what to buy instead.")
     tab_csv, tab_master = st.tabs(["📄  Two Shopify CSVs", "📊  One master file (xlsx)"])
     with tab_csv:

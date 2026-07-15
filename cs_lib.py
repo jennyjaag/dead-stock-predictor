@@ -1,5 +1,5 @@
 """
-cs_lib.py -- shared brain for the ClearShelf multi-page app.
+cs_lib.py -- shared brain for the EquiSphere multi-page app.
 
 Holds: theme CSS, the sidebar brand, session-state setup, data loading, the
 "freed since last visit" snapshot, small formatting helpers, and the two big
@@ -21,8 +21,8 @@ import master_load as ML
 import buy_plan_view as BP
 import casa_report as C
 
-APP_NAME = "ClearShelf"
-COMPANY = "Equine Edge"    # parent — shown as "ClearShelf by Equine Edge" (easy to change)
+APP_NAME = "EquiSphere"
+COMPANY = "Equine Edge"    # parent — shown as "EquiSphere by Equine Edge" (easy to change)
 TAGLINE = "Dead-stock intelligence for independent tack shops"
 TODAY = date.today()
 SNAP_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cs_snapshots.json")
@@ -357,7 +357,7 @@ def _export_and_share(df, shop):
         if st.button("✉️  Email the list", disabled=not to):
             ok, msg = send_email(
                 to, "{} — dead-stock product list".format(shop),
-                "Attached is your filtered dead-stock product list ({} rows) from ClearShelf.".format(len(df)),
+                "Attached is your filtered dead-stock product list ({} rows) from EquiSphere.".format(len(df)),
                 csv_bytes, fname + "_products.csv")
             (st.success if ok else st.warning)(msg)
             if not ok and not email_configured():

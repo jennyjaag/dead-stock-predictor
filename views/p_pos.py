@@ -27,7 +27,7 @@ mm = pd.DataFrame([
 st.dataframe(mm, hide_index=True, use_container_width=True)
 
 if cs_lib.has_data():
-    st.caption("On your real data, ClearShelf already surfaces some of these (negative stock, missing costs) "
+    st.caption("On your real data, EquiSphere already surfaces some of these (negative stock, missing costs) "
                "in the dead-stock report's data-quality flags — the reconciler would fix them at the source.")
 
 cs_lib.how_it_works([
