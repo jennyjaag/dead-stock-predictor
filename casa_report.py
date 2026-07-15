@@ -141,10 +141,10 @@ def esc(t):
 
 def colour(s):
     if s >= MARKDOWN_SCORE:
-        return "#fde2e1", "#a11a12"
+        return "#f6e1dd", "#b23a2e"        # at risk (red)
     if s >= WATCH_SCORE:
-        return "#fdf3d8", "#8a6100"
-    return "#e3f6e5", "#1c6b28"
+        return "#fbf0d8", "#94661a"        # watch (amber)
+    return "#e9e7df", "#6b7268"            # healthy (neutral grey — not brand green)
 
 
 def main():

@@ -21,6 +21,7 @@ import buy_plan_view as BP
 import casa_report as C
 
 APP_NAME = "ClearShelf"
+COMPANY = "Rein"          # parent company — shown as "ClearShelf by Rein" (easy to change)
 TAGLINE = "Dead-stock intelligence for independent tack shops"
 TODAY = date.today()
 SNAP_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cs_snapshots.json")
@@ -55,7 +56,8 @@ def inject_css():
 
 def sidebar_brand():
     st.sidebar.markdown(
-        "<div class='cs-brand'>🐴 {}</div><div class='cs-tag'>{}</div>".format(APP_NAME, TAGLINE),
+        "<div class='cs-brand'>🐴 {}<span class='cs-by'>by {}</span></div>"
+        "<div class='cs-tag'>{}</div>".format(APP_NAME, COMPANY, TAGLINE),
         unsafe_allow_html=True)
     if has_data():
         ss = st.session_state
@@ -209,10 +211,10 @@ def _hl(v):
     if not isinstance(v, (int, float)):
         return ""
     if v >= C.MARKDOWN_SCORE:
-        return "background-color:#fde2e1;color:#a11a12;font-weight:700"
+        return "background-color:#f6e1dd;color:#b23a2e;font-weight:700"   # at risk (red)
     if v >= C.WATCH_SCORE:
-        return "background-color:#fdf3d8;color:#8a6100;font-weight:700"
-    return "background-color:#e3f6e5;color:#1c6b28;font-weight:700"
+        return "background-color:#fbf0d8;color:#94661a;font-weight:700"   # watch (amber)
+    return "background-color:#e9e7df;color:#6b7268;font-weight:700"       # healthy (neutral grey)
 
 
 def render_deadstock(r):
@@ -257,7 +259,7 @@ def render_deadstock(r):
                 y=alt.Y("Cover (mo):Q", title="Months of cover (capped at 60)"),
                 size=alt.Size("Cash:Q", scale=alt.Scale(range=[30, 900]), legend=None),
                 color=alt.Color("Risk:N", scale=alt.Scale(
-                    domain=["Act now", "Watch", "Healthy"], range=["#d62d20", "#e0a825", "#1e8c3c"]),
+                    domain=["Act now", "Watch", "Healthy"], range=["#D1483B", "#E0A030", "#b8b3a4"]),
                     legend=alt.Legend(title="", orient="top")),
                 tooltip=["Product", "Sold/yr", "Cover (mo)", alt.Tooltip("Cash:Q", format="$,.0f")],
             ).properties(height=340).configure_axis(grid=True, gridColor="#eef1f4"))
@@ -273,7 +275,7 @@ def render_deadstock(r):
             catdf = pd.DataFrame(sorted(cat.items(), key=lambda kv: kv[1], reverse=True)[:8],
                                  columns=["Category", "Cash at risk"]).set_index("Category")
             st.caption("Cash at risk by category")
-            st.bar_chart(catdf, horizontal=True, color="#d62d20", height=340)
+            st.bar_chart(catdf, horizontal=True, color="#D1483B", height=340)
         else:
             st.caption("Category breakdown not available for this file.")
 
@@ -403,37 +405,38 @@ CSS = """
 <style>
   .block-container {padding-top: 2rem; max-width: 1200px;}
   #MainMenu, footer {visibility: hidden;}
-  .cs-brand {font-size: 16px; font-weight: 800; color: #0F6E56; letter-spacing:.02em;}
-  .cs-tag {color:#5a6b63; font-size:12px; margin-top:-3px;}
-  .page-title {font-size: 24px; font-weight: 800; color:#12261f;}
-  .page-sub {color:#5a6b63; font-size:13.5px; margin: 2px 0 16px;}
-  .demo-badge {font-size:11px; font-weight:700; color:#8a6100; background:#fdf3d8;
+  .cs-brand {font-size: 16px; font-weight: 800; color: #1F5A43; letter-spacing:.02em;}
+  .cs-by {font-size:11px; font-weight:600; color:#B07B4C; margin-left:6px;}
+  .cs-tag {color:#5a6b5e; font-size:12px; margin-top:-3px;}
+  .page-title {font-size: 24px; font-weight: 800; color:#16241F;}
+  .page-sub {color:#5a6b5e; font-size:13.5px; margin: 2px 0 16px;}
+  .demo-badge {font-size:11px; font-weight:700; color:#94661a; background:#fbf0d8;
                padding:2px 8px; border-radius:10px; vertical-align:middle; margin-left:8px;}
-  .cs-problem {background:#fbf7ec; border:1px solid #ece0c3; border-radius:12px; padding:13px 16px;
-               font-size:14px; color:#6a5b33; margin: 2px 0 16px;}
-  .cs-pricing {background:#e9f4ef; border:1px solid #c4e2d6; border-radius:12px; padding:12px 16px;
-               font-size:13.5px; color:#0c4a3a; margin: 18px 0 6px;}
-  .cs-hero {background: linear-gradient(100deg,#0f2b23,#134e3b); color:#fff; border-radius:16px;
-            padding: 24px 28px; margin: 4px 0 18px;}
+  .cs-problem {background:#f6efe1; border:1px solid #e6d8bd; border-radius:12px; padding:13px 16px;
+               font-size:14px; color:#6a5733; margin: 2px 0 16px;}
+  .cs-pricing {background:#eaf1ec; border:1px solid #cfe0d5; border-radius:12px; padding:12px 16px;
+               font-size:13.5px; color:#1F5A43; margin: 18px 0 6px;}
+  .cs-hero {background: linear-gradient(105deg,#16241F,#1F5A43); color:#fff; border-radius:16px;
+            padding: 24px 28px; margin: 4px 0 18px; border-left:5px solid #B07B4C;}
   .cs-hero .num {font-size: 40px; font-weight: 800; line-height:1.05;}
-  .cs-hero .sub {font-size: 14px; opacity:.85; margin-top:6px;}
-  .cs-quickwin {background:#e9f4ef; border:1px solid #c4e2d6; border-radius:12px;
-                padding:14px 18px; font-size:15px; color:#0c4a3a; margin: 4px 0 18px;}
-  .cs-quickwin b {color:#0F6E56;}
-  div[data-testid="stMetric"] {background:#f4f8f6; border:1px solid #dceae3; border-radius:12px; padding:14px 16px;}
-  .jump {display:block; background:#f4f8f6; border:1px solid #dceae3; border-radius:14px; padding:18px 20px;
+  .cs-hero .sub {font-size: 14px; opacity:.88; margin-top:6px;}
+  .cs-quickwin {background:#eaf1ec; border:1px solid #cfe0d5; border-radius:12px;
+                padding:14px 18px; font-size:15px; color:#16241F; margin: 4px 0 18px;}
+  .cs-quickwin b {color:#1F5A43;}
+  div[data-testid="stMetric"] {background:#fbfaf5; border:1px solid #e7e1d3; border-radius:12px; padding:14px 16px;}
+  .jump {display:block; background:#fbfaf5; border:1px solid #e7e1d3; border-radius:14px; padding:18px 20px;
          text-decoration:none; height:100%;}
-  .jump h4 {margin:0 0 4px; color:#12261f; font-size:16px;}
-  .jump p {margin:0; color:#5a6b63; font-size:12.5px;}
+  .jump h4 {margin:0 0 4px; color:#16241F; font-size:16px;}
+  .jump p {margin:0; color:#5a6b5e; font-size:12.5px;}
   .pill {display:inline-block; padding:3px 10px; border-radius:20px; font-weight:700; font-size:12px;}
-  .pill.red{background:#fde2e1;color:#a11a12;} .pill.amber{background:#fdf3d8;color:#8a6100;} .pill.green{background:#e3f6e5;color:#1c6b28;}
+  .pill.red{background:#f6e1dd;color:#b23a2e;} .pill.amber{background:#fbf0d8;color:#94661a;} .pill.green{background:#e9e7df;color:#6b7268;}
   table.cs {width:100%; border-collapse:collapse; font-size:13px;}
-  table.cs th{text-align:left; color:#5a6b63; font-size:10.5px; text-transform:uppercase; letter-spacing:.04em; padding:8px 10px; border-bottom:1px solid #dceae3;}
-  table.cs td{padding:9px 10px; border-bottom:1px solid #eef3f0; vertical-align:top;}
-  table.cs td.prod{font-weight:600; color:#12261f;}
-  table.cs .why{color:#5a6b63; font-size:11.5px; display:block; margin-top:2px;}
+  table.cs th{text-align:left; color:#5a6b5e; font-size:10.5px; text-transform:uppercase; letter-spacing:.04em; padding:8px 10px; border-bottom:1px solid #e0dccf;}
+  table.cs td{padding:9px 10px; border-bottom:1px solid #ece7db; vertical-align:top;}
+  table.cs td.prod{font-weight:600; color:#16241F;}
+  table.cs .why{color:#5a6b5e; font-size:11.5px; display:block; margin-top:2px;}
   table.cs td.num{text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap;}
   table.cs td.act{white-space:nowrap; font-weight:600;}
-  table.cs td.act .date{display:block; color:#98a2b3; font-weight:400; font-size:11px;}
+  table.cs td.act .date{display:block; color:#9a9686; font-weight:400; font-size:11px;}
 </style>
 """

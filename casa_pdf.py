@@ -117,14 +117,14 @@ TEMPLATE = """<!DOCTYPE html><html><head><meta charset="utf-8"><style>
   body {{ font-family: -apple-system, "Helvetica Neue", Arial, sans-serif; color: #1b1f24;
          font-size: 10.5px; line-height: 1.45; margin: 0; }}
   h1 {{ font-size: 22px; margin: 0 0 2px; }}
-  h2 {{ font-size: 14px; margin: 20px 0 9px; padding-bottom: 4px; border-bottom: 2px solid #12263a; }}
+  h2 {{ font-size: 14px; margin: 20px 0 9px; padding-bottom: 4px; border-bottom: 2px solid #1F5A43; }}
   .muted {{ color: #6b7280; }}
   .sub-h {{ color: #6b7280; font-size: 10px; margin-bottom: 4px; }}
   .page-break {{ page-break-before: always; }}
   .avoid-break {{ page-break-inside: avoid; }}
 
   /* hero */
-  .hero {{ display: flex; gap: 0; background: #12263a; color: #fff; border-radius: 10px;
+  .hero {{ display: flex; gap: 0; background: #1F5A43; color: #fff; border-radius: 10px;
           overflow: hidden; margin-top: 12px; }}
   .hero .cell {{ padding: 14px 16px; flex: 1; border-right: 1px solid rgba(255,255,255,.15); }}
   .hero .cell:last-child {{ border-right: 0; }}
@@ -142,9 +142,9 @@ TEMPLATE = """<!DOCTYPE html><html><head><meta charset="utf-8"><style>
   .gl {{ margin: 4px 0 0; padding-left: 16px; }}
   .gl li {{ margin-bottom: 3px; }}
   .chip {{ display: inline-block; padding: 1px 7px; border-radius: 10px; font-weight: 700; font-size: 9.5px; }}
-  .chip.r {{ background: #fde2e1; color: #a11a12; }}
-  .chip.a {{ background: #fdf3d8; color: #8a6100; }}
-  .chip.g {{ background: #e3f6e5; color: #1c6b28; }}
+  .chip.r {{ background: #f6e1dd; color: #b23a2e; }}
+  .chip.a {{ background: #fbf0d8; color: #94661a; }}
+  .chip.g {{ background: #e9e7df; color: #6b7268; }}
 
   ol.todo {{ margin: 0; padding-left: 18px; }} ol.todo li {{ margin-bottom: 5px; }}
   .dim {{ color: #6b7280; }}
@@ -152,7 +152,7 @@ TEMPLATE = """<!DOCTYPE html><html><head><meta charset="utf-8"><style>
   /* brand bars */
   .bar {{ display: grid; grid-template-columns: 90px 1fr 60px; align-items: center; gap: 9px; margin-bottom: 5px; }}
   .bn {{ font-weight: 600; }} .bt {{ background: #eceef1; border-radius: 6px; height: 12px; overflow: hidden; }}
-  .bf {{ background: #d0433a; height: 100%; }} .bv {{ text-align: right; color: #4b5563; font-variant-numeric: tabular-nums; }}
+  .bf {{ background: #D1483B; height: 100%; }} .bv {{ text-align: right; color: #4b5563; font-variant-numeric: tabular-nums; }}
 
   /* table */
   table {{ width: 100%; border-collapse: collapse; font-size: 9.3px; }}
@@ -167,7 +167,7 @@ TEMPLATE = """<!DOCTYPE html><html><head><meta charset="utf-8"><style>
   .sub {{ display: block; font-weight: 400; color: #9aa0a6; font-size: 8px; }}
   .tr {{ color: #9aa0a6; }}
   .p {{ display: inline-block; min-width: 26px; text-align: center; padding: 1px 6px; border-radius: 10px; font-weight: 700; }}
-  .p.r {{ background: #fde2e1; color: #a11a12; }} .p.a {{ background: #fdf3d8; color: #8a6100; }} .p.g {{ background: #e3f6e5; color: #1c6b28; }}
+  .p.r {{ background: #f6e1dd; color: #b23a2e; }} .p.a {{ background: #fbf0d8; color: #94661a; }} .p.g {{ background: #e9e7df; color: #6b7268; }}
   .foot {{ margin-top: 8px; font-size: 8.5px; color: #9aa0a6; }}
 </style></head><body>
 

@@ -105,10 +105,10 @@ TEMPLATE = """<!DOCTYPE html><html><head><meta charset="utf-8"><style>
   * {{ box-sizing:border-box; -webkit-print-color-adjust:exact; print-color-adjust:exact; }}
   body {{ font-family:-apple-system,"Helvetica Neue",Arial,sans-serif; color:#1b1f24; font-size:10.5px; line-height:1.45; margin:0; }}
   h1 {{ font-size:22px; margin:0 0 2px; }}
-  h2 {{ font-size:14px; margin:20px 0 9px; padding-bottom:4px; border-bottom:2px solid #12263a; }}
+  h2 {{ font-size:14px; margin:20px 0 9px; padding-bottom:4px; border-bottom:2px solid #1F5A43; }}
   .sub-h {{ color:#6b7280; font-size:10px; margin-bottom:4px; }}
   .page-break {{ page-break-before:always; }} tr {{ page-break-inside:avoid; }}
-  .hero {{ display:flex; background:#12263a; color:#fff; border-radius:10px; overflow:hidden; margin-top:12px; }}
+  .hero {{ display:flex; background:#1F5A43; color:#fff; border-radius:10px; overflow:hidden; margin-top:12px; }}
   .hero .cell {{ padding:14px 16px; flex:1; border-right:1px solid rgba(255,255,255,.15); }}
   .hero .cell:last-child {{ border-right:0; }}
   .hero .big {{ font-size:23px; font-weight:800; line-height:1.05; }}
@@ -118,7 +118,7 @@ TEMPLATE = """<!DOCTYPE html><html><head><meta charset="utf-8"><style>
   .guide {{ background:#f7f8fa; border:1px solid #e6e8ec; border-radius:8px; padding:6px 16px 12px; font-size:10px; }}
   .guide h3 {{ font-size:11px; margin:11px 0 3px; }} .guide ul {{ margin:3px 0; padding-left:15px; }} .guide li {{ margin-bottom:2px; }}
   .chip {{ display:inline-block; padding:1px 7px; border-radius:10px; font-weight:700; font-size:9.5px; }}
-  .chip.r {{ background:#fde2e1; color:#a11a12; }} .chip.a {{ background:#fdf3d8; color:#8a6100; }} .chip.g {{ background:#e3f6e5; color:#1c6b28; }}
+  .chip.r {{ background:#f6e1dd; color:#b23a2e; }} .chip.a {{ background:#fbf0d8; color:#94661a; }} .chip.g {{ background:#e9e7df; color:#6b7268; }}
   table {{ width:100%; border-collapse:collapse; font-size:9.3px; }}
   thead {{ display:table-header-group; }}
   th,td {{ text-align:left; padding:4px 5px; border-bottom:0.5px solid #e6e8ec; }}
@@ -128,11 +128,11 @@ TEMPLATE = """<!DOCTYPE html><html><head><meta charset="utf-8"><style>
   td.act .dt {{ display:block; color:#98a2b3; font-weight:400; font-size:8px; }}
   .nm .sub {{ display:block; font-weight:400; color:#98a2b3; font-size:8.5px; }}
   .p {{ display:inline-block; min-width:24px; text-align:center; padding:1px 6px; border-radius:10px; font-weight:700; }}
-  .p.r {{ background:#fde2e1; color:#a11a12; }} .p.a {{ background:#fdf3d8; color:#8a6100; }} .p.g {{ background:#e3f6e5; color:#1c6b28; }}
+  .p.r {{ background:#f6e1dd; color:#b23a2e; }} .p.a {{ background:#fbf0d8; color:#94661a; }} .p.g {{ background:#e9e7df; color:#6b7268; }}
   .foot {{ margin-top:8px; font-size:8.5px; color:#9aa0a6; }}
   .bar {{ display:grid; grid-template-columns:110px 1fr 66px; align-items:center; gap:9px; margin-bottom:5px; font-size:10px; }}
   .bn {{ font-weight:600; }} .bt {{ background:#eceef1; border-radius:6px; height:12px; overflow:hidden; }}
-  .bf {{ background:#d0433a; height:100%; }} .bv {{ text-align:right; color:#4b5563; font-variant-numeric:tabular-nums; }}
+  .bf {{ background:#D1483B; height:100%; }} .bv {{ text-align:right; color:#4b5563; font-variant-numeric:tabular-nums; }}
 </style></head><body>
   <h1>Casa Equestre — Dead-Stock Report</h1>
   <div class="sub-h">Source: single master export (stock, cost, 30/90/12-month + prior-year sales, date added) · as of {asof}</div>

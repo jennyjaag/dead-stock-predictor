@@ -1,9 +1,11 @@
-# ClearShelf theme — deep-green (Equine Edge) palette
+# ClearShelf (by Rein) — equestrian, premium palette.
+# Brand green is reserved for the brand; risk uses red/amber, and "healthy" is
+# neutral grey so it never competes with the signature colour.
 [theme]
-primaryColor = "#0F6E56"
-backgroundColor = "#ffffff"
-secondaryBackgroundColor = "#eef3f0"
-textColor = "#12261f"
+primaryColor = "#1F5A43"            # deep racing green — signature / buttons
+backgroundColor = "#F7F5EF"         # warm cream "paper"
+secondaryBackgroundColor = "#EFEBDF"  # deeper cream — sidebar / cards
+textColor = "#16241F"               # charcoal-green ink
 font = "sans serif"
 
 [server]

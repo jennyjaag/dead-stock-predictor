@@ -339,7 +339,7 @@ TEMPLATE = """<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
   *{{box-sizing:border-box}} body{{font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:0;background:#f5f6f8;color:#1b1f24}}
   .wrap{{max-width:1040px;margin:0 auto;padding:28px 20px 60px}}
   h1{{font-size:22px;margin:0 0 2px}} .sub{{color:#6b7280;font-size:12.5px;margin-bottom:22px}}
-  .hero{{background:#12263a;color:#fff;border-radius:14px;padding:24px 26px;display:flex;flex-wrap:wrap;gap:26px;align-items:center}}
+  .hero{{background:linear-gradient(105deg,#16241F,#1F5A43);color:#fff;border-radius:14px;padding:24px 26px;display:flex;flex-wrap:wrap;gap:26px;align-items:center;border-left:5px solid #B07B4C}}
   .hero .big{{font-size:36px;font-weight:800;line-height:1}} .hero .stat{{font-size:22px;font-weight:600}}
   .hero .label{{font-size:11.5px;opacity:.82;margin-top:5px}} .hero .divider{{width:1px;align-self:stretch;background:rgba(255,255,255,.2)}}
   .card{{background:#fff;border-radius:14px;padding:20px 22px;margin-top:20px;box-shadow:0 1px 3px rgba(0,0,0,.06)}}
@@ -396,9 +396,9 @@ TEMPLATE = """<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
       <th>Product</th><th>Risk</th><th>Stock</th><th>Cover</th><th>Sold/yr</th><th class="num">Cash @cost</th><th>Action</th>
     </tr></thead><tbody>{rows}</tbody></table></div>
     <div class="legend">
-      <span style="background:#fde2e1;color:#a11a12">70–100 Mark down</span>
-      <span style="background:#fdf3d8;color:#8a6100">45–69 Watch</span>
-      <span style="background:#e3f6e5;color:#1c6b28">0–44 Healthy</span>
+      <span style="background:#f6e1dd;color:#b23a2e">70–100 Mark down</span>
+      <span style="background:#fbf0d8;color:#94661a">45–69 Watch</span>
+      <span style="background:#e9e7df;color:#6b7268">0–44 Healthy</span>
       &nbsp; <b>*</b> = no cost recorded, cash unknown &nbsp; · &nbsp; ∞ cover = no sales in 12 months
     </div>
   </div>
