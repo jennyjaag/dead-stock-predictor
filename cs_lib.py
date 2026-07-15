@@ -571,13 +571,16 @@ CSS = """
 <style>
   .block-container {padding-top: 2rem; max-width: 1200px;}
   #MainMenu, footer {visibility: hidden;}
-  /* Stop content from pushing the page wider than the window (which was
-     clipping the headlines). min-width:0 lets flex children shrink instead
-     of expanding to their content's intrinsic width; rows also wrap. */
-  [data-testid="stMainBlockContainer"], [data-testid="stVerticalBlock"],
-  [data-testid="stHorizontalBlock"], [data-testid="stColumn"] {min-width: 0 !important;}
-  [data-testid="stHorizontalBlock"] {flex-wrap: wrap;}
-  .page-title, .page-sub, .cs-hero .num, .cs-hero .sub, h1, h2, h3, p {overflow-wrap: anywhere;}
+  /* Hard guarantee against headline clipping: the page never scrolls
+     sideways, flex children may shrink (min-width:0) rather than expand to
+     their content width, and all headings wrap. */
+  html, body {overflow-x: hidden !important;}
+  [data-testid="stAppViewContainer"], [data-testid="stMain"], [data-testid="stMainBlockContainer"],
+  [data-testid="stVerticalBlock"], [data-testid="stHorizontalBlock"], [data-testid="stColumn"],
+  [data-testid="stElementContainer"], .block-container {min-width: 0 !important; max-width: 100% !important;}
+  [data-testid="stMain"] {overflow-x: hidden;}
+  .page-title, .page-sub, .cs-hero .num, .cs-hero .sub, h1, h2, h3, p {
+    overflow-wrap: anywhere; word-break: break-word; white-space: normal;}
   .cs-brand {font-size: 16px; font-weight: 800; color: #1F5A43; letter-spacing:.02em;}
   .cs-by {font-size:11px; font-weight:600; color:#B07B4C; margin-left:6px;}
   .cs-tag {color:#5a6b5e; font-size:12px; margin-top:-3px;}
