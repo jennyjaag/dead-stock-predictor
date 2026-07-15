@@ -55,6 +55,24 @@ Cloud redeploys automatically within a minute. No re-setup.
 
 ---
 
+## Enabling "Email the list" (optional)
+The dead-stock report can email the filtered product list as a CSV. That needs an
+SMTP account, added as a **secret** so no password ever goes in the code or through
+chat. In Streamlit Cloud: **app → Settings → Secrets**, paste:
+
+```toml
+[email]
+smtp_host = "smtp.gmail.com"
+smtp_port = 587
+smtp_user = "you@yourdomain.com"
+smtp_pass = "an-app-password"      # use an app password, not your real one
+from = "ClearShelf <you@yourdomain.com>"
+```
+
+Until that's set, the Email button politely tells the user to download the CSV/Excel
+instead — it never errors. (To test locally, put the same block in
+`.streamlit/secrets.toml`, which is gitignored.)
+
 ## Notes
 - **Cost:** free on Streamlit Community Cloud for this size of app.
 - **The `.streamlit/config.toml`** (theme) and `demo_data/` are included, so the

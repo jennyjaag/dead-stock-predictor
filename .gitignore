@@ -25,3 +25,6 @@ Casa_*.pdf
 *deadstock_master*.xlsx
 !demo_data/demo_sales.csv
 !demo_data/demo_products.csv
+
+# Local email/SMTP secrets — never commit
+.streamlit/secrets.toml

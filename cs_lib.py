@@ -7,6 +7,7 @@ renderers (dead-stock report + buy-plan) so every page stays thin. No analytics
 live here that weren't already in shopify_join / master_load / buy_plan_view.
 """
 
+import io
 import json
 import os
 from datetime import date, timedelta
@@ -213,6 +214,44 @@ def _save_snaps(d):
         pass
 
 
+def _email_cfg():
+    """Read SMTP settings from Streamlit secrets (set in deployment). Never from chat."""
+    try:
+        return dict(st.secrets["email"])
+    except Exception:
+        return {}
+
+
+def email_configured():
+    c = _email_cfg()
+    return bool(c.get("smtp_host") and c.get("smtp_user") and c.get("smtp_pass"))
+
+
+def send_email(to, subject, body, attachment_bytes=None, filename="report.csv"):
+    """Send via the SMTP account configured in secrets. Returns (ok, message)."""
+    import smtplib
+    import ssl
+    from email.message import EmailMessage
+    c = _email_cfg()
+    if not email_configured():
+        return False, "Email isn't set up yet (no SMTP configured)."
+    msg = EmailMessage()
+    msg["Subject"] = subject
+    msg["From"] = c.get("from", c["smtp_user"])
+    msg["To"] = to
+    msg.set_content(body)
+    if attachment_bytes is not None:
+        msg.add_attachment(attachment_bytes, maintype="text", subtype="csv", filename=filename)
+    try:
+        with smtplib.SMTP(c["smtp_host"], int(c.get("smtp_port", 587))) as s:
+            s.starttls(context=ssl.create_default_context())
+            s.login(c["smtp_user"], c["smtp_pass"])
+            s.send_message(msg)
+        return True, "Sent to {}.".format(to)
+    except Exception as e:
+        return False, "Send failed: {}".format(e)
+
+
 def freed_since_last_visit(shop, current_cash):
     """Return $ freed vs the last saved snapshot (once per session), else None."""
     if st.session_state.get("snapshotted"):
@@ -242,6 +281,37 @@ def _hl(v):
     return "background-color:#e9e7df;color:#6b7268;font-weight:700"       # healthy (neutral grey)
 
 
+def _export_and_share(df, shop):
+    """Download (CSV/Excel) and email the filtered product list."""
+    if df is None or not len(df):
+        return
+    st.markdown("##### Export &amp; share this list")
+    st.caption("Exports exactly what's filtered above ({} rows).".format(len(df)))
+    fname = shop.replace(" ", "_") or "shop"
+    csv_bytes = df.to_csv(index=False).encode("utf-8")
+    xbuf = io.BytesIO()
+    df.to_excel(xbuf, index=False)
+    e1, e2, e3 = st.columns([1, 1, 3])
+    e1.download_button("⬇︎ CSV", csv_bytes, file_name=fname + "_products.csv", mime="text/csv",
+                       use_container_width=True)
+    e2.download_button("⬇︎ Excel", xbuf.getvalue(), file_name=fname + "_products.xlsx",
+                       mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                       use_container_width=True)
+    with e3:
+        to = st.text_input("Email this list to", placeholder="name@shop.com",
+                           key="email_to", label_visibility="collapsed")
+        if st.button("✉️  Email the list", disabled=not to):
+            ok, msg = send_email(
+                to, "{} — dead-stock product list".format(shop),
+                "Attached is your filtered dead-stock product list ({} rows) from ClearShelf.".format(len(df)),
+                csv_bytes, fname + "_products.csv")
+            (st.success if ok else st.warning)(msg)
+            if not ok and not email_configured():
+                st.caption("Email sending isn't switched on for this app yet. Download the CSV/Excel above and "
+                           "attach it — or add SMTP details to the app's secrets to enable one-click send "
+                           "(see DEPLOY.md).")
+
+
 def render_deadstock(r):
     ss = st.session_state
     shop = ss["shop_name"]
@@ -266,14 +336,20 @@ def render_deadstock(r):
 
     shown = [x for x in r["in_stock"] if x["risk"] >= min_risk and (x["cash"] or 0) >= min_cash]
 
-    # --- category filter (contextual) ---
+    # --- category filter + product search (contextual) ---
     cats = sorted({x["type"] for x in r["in_stock"] if x["type"] and x["type"] != "Uncategorised"})
-    if cats:
-        st.session_state["cat_filter"] = [c for c in st.session_state.get("cat_filter", []) if c in cats]
-        sel = st.multiselect("Filter by category", cats, key="cat_filter",
-                             placeholder="All categories", label_visibility="collapsed")
-        if sel:
-            shown = [x for x in shown if x["type"] in sel]
+    fc1, fc2 = st.columns([3, 2])
+    with fc1:
+        if cats:
+            st.session_state["cat_filter"] = [c for c in st.session_state.get("cat_filter", []) if c in cats]
+            sel = st.multiselect("Filter by category", cats, key="cat_filter", placeholder="All categories")
+            if sel:
+                shown = [x for x in shown if x["type"] in sel]
+    with fc2:
+        q = st.text_input("Search products", placeholder="product or brand name…", key="prod_search")
+        if q:
+            ql = q.lower()
+            shown = [x for x in shown if ql in x["title"].lower() or ql in (x["vendor"] or "").lower()]
 
     st.subheader("The dead-stock map")
     st.caption("Bottom-right = healthy (sells fast). Top-left = dead stock (barely sells, months of cover). "
@@ -337,6 +413,7 @@ def render_deadstock(r):
     else:
         st.success("Nothing above the risk threshold — inventory looks healthy. 🎉")
 
+    export_df = None
     has_variants = any(len(x.get("variants") or []) for x in shown)
     if variant_view and has_variants:
         # option dimensions present (Size, Colour, …) → a filter for each
@@ -378,6 +455,7 @@ def render_deadstock(r):
             st.caption("Filter by size / colour above. Stock & cash are per variant; velocity/risk are the "
                        "product's overall figures.")
             vdf = pd.DataFrame(vrows)
+            export_df = vdf
             if len(vdf):
                 st.dataframe(vdf.style.map(_hl, subset=["Risk (product)"]), use_container_width=True,
                              hide_index=True, height=460)
@@ -392,11 +470,14 @@ def render_deadstock(r):
                 "Stock": int(x["stock"]), "Cover": cover_txt(x["cover"]), "Sold/yr": int(x["u12"]),
                 "Cash @cost ($)": None if x["cash"] is None else round(x["cash"]),
                 "Action": recommend(x)[0], "Status": x["status"]} for x in shown])
+            export_df = df
             if len(df):
                 st.dataframe(df.style.map(_hl, subset=["Risk"]), use_container_width=True,
                              hide_index=True, height=460)
             else:
                 st.info("No products match the current filters. Lower the thresholds in Settings.")
+
+    _export_and_share(export_df, shop)
 
     with st.expander("⚠︎ Data-quality flags & how the columns were mapped"):
         for title, level, body in r["flags"]:
