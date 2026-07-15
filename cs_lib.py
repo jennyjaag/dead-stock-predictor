@@ -45,6 +45,8 @@ def init_state():
     ss.setdefault("kind", None)
     ss.setdefault("names", None)
     ss.setdefault("snapshotted", False)
+    ss.setdefault("pro_plan", False)      # premium tier (gates the Trade-show buy AI)
+    ss.setdefault("cat_filter", [])       # dead-stock category filter
     # push settings into the engine modules (used on the next data load)
     C.CURRENCY = ss["currency"]
     ML.NEW_DAYS = int(ss["grace_days"])
@@ -169,6 +171,29 @@ def require_data():
         st.stop()
 
 
+def is_pro():
+    return bool(st.session_state.get("pro_plan"))
+
+
+def require_pro(feature, price, benefits):
+    """Paywall for premium tools. Renders an upsell and stops unless Pro is on."""
+    if is_pro():
+        return
+    st.markdown("<div class='cs-hero'><div class='num'>🔒 {} is a Pro feature</div>"
+                "<div class='sub'>{}</div></div>".format(feature, price), unsafe_allow_html=True)
+    st.markdown("##### What you get with Pro")
+    st.markdown("\n".join("- {}".format(b) for b in benefits))
+    c1, c2 = st.columns([1, 2])
+    with c1:
+        if st.button("🔓  Unlock (demo)", type="primary"):
+            st.session_state["pro_plan"] = True
+            st.rerun()
+    with c2:
+        st.caption("Demo only — 'Unlock' flips on the Pro plan for this session. Real billing comes later; "
+                   "you can also toggle Pro in Settings.")
+    st.stop()
+
+
 # ---------------------------------------------------------------------------
 # "freed since last visit" snapshot (small local JSON, keyed by shop name)
 # ---------------------------------------------------------------------------
@@ -241,6 +266,15 @@ def render_deadstock(r):
 
     shown = [x for x in r["in_stock"] if x["risk"] >= min_risk and (x["cash"] or 0) >= min_cash]
 
+    # --- category filter (contextual) ---
+    cats = sorted({x["type"] for x in r["in_stock"] if x["type"] and x["type"] != "Uncategorised"})
+    if cats:
+        st.session_state["cat_filter"] = [c for c in st.session_state.get("cat_filter", []) if c in cats]
+        sel = st.multiselect("Filter by category", cats, key="cat_filter",
+                             placeholder="All categories", label_visibility="collapsed")
+        if sel:
+            shown = [x for x in shown if x["type"] in sel]
+
     st.subheader("The dead-stock map")
     st.caption("Bottom-right = healthy (sells fast). Top-left = dead stock (barely sells, months of cover). "
                "Bigger dot = more cash tied up.")
@@ -305,10 +339,32 @@ def render_deadstock(r):
 
     has_variants = any(len(x.get("variants") or []) for x in shown)
     if variant_view and has_variants:
+        # option dimensions present (Size, Colour, …) → a filter for each
+        opt_values = {}
+        for x in shown:
+            for v in (x.get("variants") or []):
+                for nm, val in (v.get("options") or {}).items():
+                    opt_values.setdefault(nm, set()).add(val)
+        selected_opts = {}
+        if opt_values:
+            fcols = st.columns(len(opt_values))
+            for i, (nm, vals) in enumerate(sorted(opt_values.items())):
+                with fcols[i]:
+                    selected_opts[nm] = st.multiselect(nm, sorted(vals), key="vopt_" + nm,
+                                                       placeholder="All " + nm)
+
+        def variant_ok(v):
+            if v["stock"] <= 0:
+                return False
+            for nm, chosen in selected_opts.items():
+                if chosen and (v.get("options") or {}).get(nm) not in chosen:
+                    return False
+            return True
+
         vrows = []
         for x in shown:
             for v in (x.get("variants") or []):
-                if v["stock"] <= 0:
+                if not variant_ok(v):
                     continue
                 vcash = v["stock"] * v["cost"] if v["cost"] else None
                 if (vcash or 0) < min_cash:
@@ -319,7 +375,8 @@ def render_deadstock(r):
                               "Variant cash ($)": None if vcash is None else round(vcash),
                               "Action": recommend(x)[0]})
         with st.expander("📋 All in-stock **variants** (size/colour) — {} shown".format(len(vrows)), expanded=True):
-            st.caption("Stock & cash are per variant; velocity/risk are the product's overall figures.")
+            st.caption("Filter by size / colour above. Stock & cash are per variant; velocity/risk are the "
+                       "product's overall figures.")
             vdf = pd.DataFrame(vrows)
             if len(vdf):
                 st.dataframe(vdf.style.map(_hl, subset=["Risk (product)"]), use_container_width=True,
@@ -405,13 +462,13 @@ CSS = """
 <style>
   .block-container {padding-top: 2rem; max-width: 1200px;}
   #MainMenu, footer {visibility: hidden;}
-  /* Responsive: let card/column rows WRAP on narrow windows instead of
-     overflowing (which was pushing the page wider than the window and
-     clipping the headlines). */
+  /* Stop content from pushing the page wider than the window (which was
+     clipping the headlines). min-width:0 lets flex children shrink instead
+     of expanding to their content's intrinsic width; rows also wrap. */
+  [data-testid="stMainBlockContainer"], [data-testid="stVerticalBlock"],
+  [data-testid="stHorizontalBlock"], [data-testid="stColumn"] {min-width: 0 !important;}
   [data-testid="stHorizontalBlock"] {flex-wrap: wrap;}
-  [data-testid="stColumn"] {min-width: 210px;}
-  .page-title, .page-sub {overflow-wrap: anywhere; max-width: 100%;}
-  .cs-hero .num {overflow-wrap: anywhere;}
+  .page-title, .page-sub, .cs-hero .num, .cs-hero .sub, h1, h2, h3, p {overflow-wrap: anywhere;}
   .cs-brand {font-size: 16px; font-weight: 800; color: #1F5A43; letter-spacing:.02em;}
   .cs-by {font-size:11px; font-weight:600; color:#B07B4C; margin-left:6px;}
   .cs-tag {color:#5a6b5e; font-size:12px; margin-top:-3px;}

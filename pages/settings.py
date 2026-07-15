@@ -11,6 +11,11 @@ st.text_input("Shop name", key="shop_name")
 st.selectbox("Currency", ["$", "£", "€"], key="currency")
 
 st.divider()
+st.subheader("Plan")
+st.toggle("ClearShelf Pro (unlocks the Trade-show buy AI)", key="pro_plan")
+st.caption("Demo: toggling this simulates the paid Pro plan. Real billing comes later.")
+
+st.divider()
 st.subheader("Filters — dead-stock report")
 st.caption("Raise these to shrink the report to just the items worth acting on today.")
 st.slider("Only show risk ≥", 0, 100, step=5, key="min_risk")

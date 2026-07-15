@@ -102,10 +102,14 @@ def load_products(src):
             except ValueError:
                 pass
         # keep the per-variant row so the app can break stock down by size/colour
-        opts = [v.get("Option1 Value"), v.get("Option2 Value"), v.get("Option3 Value")]
-        label = " / ".join(o for o in opts if o and o != "Default Title")
-        p["variants"].append({"label": label or "(single)", "sku": (v.get("Variant SKU") or "").strip(),
-                              "stock": vqty, "cost": vcost})
+        opt_pairs = [(v.get("Option1 Name"), v.get("Option1 Value")),
+                     (v.get("Option2 Name"), v.get("Option2 Value")),
+                     (v.get("Option3 Name"), v.get("Option3 Value"))]
+        options = {(n or "Option").strip(): val.strip() for n, val in opt_pairs
+                   if val and val != "Default Title"}
+        label = " / ".join(options.values()) or "(single)"
+        p["variants"].append({"label": label, "sku": (v.get("Variant SKU") or "").strip(),
+                              "stock": vqty, "cost": vcost, "options": options})
     return prod
 
 
