@@ -1,0 +1,34 @@
+Handle,Title,Vendor,Product Category,Type,Tags,Published,Option1 Name,Option1 Value,Variant SKU,Variant Inventory Qty,Variant Price,Cost per item,Gift Card,Status
+meadowbrook-fly-spray-1l,Meadowbrook Fly Spray 1L,Meadowbrook,,Fly Control,,TRUE,Size,Size 1,meadowbrook--1,18,14.99,6.5,false,active
+oakfield-horse-treats-1kg,Oakfield Horse Treats 1kg,Oakfield,,Feed & Treats,,TRUE,Size,Size 1,oakfield-hor-1,24,7.99,3.2,false,active
+everyday-saddle-pad-navy,Everyday Saddle Pad Navy,StablePro,,Saddle Pads,,TRUE,Size,Size 1,everyday-sad-1,9,24.99,11.0,false,active
+everyday-saddle-pad-navy,,,,,,TRUE,Size,Size 2,everyday-sad-2,7,24.99,11.0,false,
+riding-gloves-black,Riding Gloves Black,StablePro,,Rider Apparel,,TRUE,Size,Size 1,riding-glove-1,6,14.99,5.8,false,active
+riding-gloves-black,,,,,,TRUE,Size,Size 2,riding-glove-2,6,14.99,5.8,false,
+riding-gloves-black,,,,,,TRUE,Size,Size 3,riding-glove-3,5,14.99,5.8,false,
+hoof-oil-500ml,Hoof Oil 500ml,Oakfield,,Hoof Care,,TRUE,Size,Size 1,hoof-oil-500-1,14,9.99,4.1,false,active
+competition-breeches-beige,Competition Breeches Beige,Elstead,,Breeches,,TRUE,Size,Size 1,competition--1,4,59.99,24.0,false,active
+competition-breeches-beige,,,,,,TRUE,Size,Size 2,competition--2,5,59.99,24.0,false,
+competition-breeches-beige,,,,,,TRUE,Size,Size 3,competition--3,3,59.99,24.0,false,
+dressage-pad-white,Dressage Pad White,StablePro,,Saddle Pads,,TRUE,Size,Size 1,dressage-pad-1,12,29.99,13.0,false,active
+show-shirt-long-sleeve,Show Shirt Long Sleeve,Elstead,,Show Shirts,,TRUE,Size,Size 1,show-shirt-l-1,8,34.99,12.0,false,active
+show-shirt-long-sleeve,,,,,,TRUE,Size,Size 2,show-shirt-l-2,6,34.99,12.0,false,
+cooler-rug-fleece,Cooler Rug Fleece,WarmwellRugs,,Rugs,,TRUE,Size,Size 1,cooler-rug-f-1,10,39.99,18.0,false,active
+leather-half-chaps-brown,Leather Half Chaps Brown,Parforce,,Footwear,,TRUE,Size,Size 1,leather-half-1,9,64.99,28.0,false,active
+leather-half-chaps-brown,,,,,,TRUE,Size,Size 2,leather-half-2,8,64.99,28.0,false,
+quilted-riding-gilet,Quilted Riding Gilet,Elstead,,Rider Apparel,,TRUE,Size,Size 1,quilted-ridi-1,11,49.99,22.0,false,active
+quilted-riding-gilet,,,,,,TRUE,Size,Size 2,quilted-ridi-2,9,49.99,22.0,false,
+snaffle-bridle-cob,Snaffle Bridle Cob,Parforce,,Bits & Bridles,,TRUE,Size,Size 1,snaffle-brid-1,14,59.99,26.0,false,active
+tweed-show-jacket-16,Tweed Show Jacket 16,Elstead,,Show Coats,,TRUE,Size,Size 1,tweed-show-j-1,6,129.99,55.0,false,active
+tweed-show-jacket-16,,,,,,TRUE,Size,Size 2,tweed-show-j-2,5,129.99,55.0,false,
+tweed-show-jacket-16,,,,,,TRUE,Size,Size 3,tweed-show-j-3,3,129.99,55.0,false,
+neon-pink-saddle-pad,Neon Pink Saddle Pad,StablePro,,Saddle Pads,,TRUE,Size,Size 1,neon-pink-sa-1,20,27.99,12.0,false,active
+neon-pink-saddle-pad,,,,,,TRUE,Size,Size 2,neon-pink-sa-2,13,27.99,12.0,false,
+long-riding-boots-black-7,Long Riding Boots Black 7,Parforce,,Footwear,,TRUE,Size,Size 1,long-riding--1,9,149.99,62.0,false,active
+kimblewick-bit-6in,Kimblewick Bit 6in,Parforce,,Bits & Bridles,,TRUE,Size,Size 1,kimblewick-b-1,16,42.99,19.0,false,active
+turnout-rug-200g-6ft3,Turnout Rug 200g 6ft3,WarmwellRugs,,Rugs,,TRUE,Size,Size 1,turnout-rug--1,11,89.99,38.0,false,active
+turnout-rug-200g-6ft3,,,,,,TRUE,Size,Size 2,turnout-rug--2,9,89.99,38.0,false,
+diamante-browband-full,Diamante Browband Full,Parforce,,Bits & Bridles,,TRUE,Size,Size 1,diamante-bro-1,22,21.99,9.0,false,active
+embroidered-stable-bandages,Embroidered Stable Bandages,Oakfield,,Accessories,,TRUE,Size,Size 1,embroidered--1,15,19.99,,false,active
+prototype-winter-jacket,Prototype Winter Jacket,Elstead,,Rider Apparel,,TRUE,Size,Size 1,prototype-wi-1,8,99.99,40.0,false,draft
+discontinued-fleece-cooler,Discontinued Fleece Cooler,WarmwellRugs,,Rugs,,TRUE,Size,Size 1,discontinued-1,4,34.99,16.0,false,archived

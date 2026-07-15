@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.DS_Store
+
+# Generated report artifacts — these can contain REAL client numbers,
+# so never commit them to the (potentially public) repo.
+report.html
+buy_plan.html
+casa_*.html
+casa_*.pdf
+Casa_*.pdf
+*_report.html
+*_report_print.html
+*_dead_stock_report.html
+
+# Real store data must never be committed. Only the synthetic demo_data/ ships.
+*sales*.csv
+*products_export*.csv
+*Reorder*Margin*.xlsx
+*deadstock_master*.xlsx
+!demo_data/demo_sales.csv
+!demo_data/demo_products.csv
