@@ -79,6 +79,7 @@ def load_master(src):
         recs.append({
             "title": col(r, "Product title"), "vendor": vendor, "ptype": ptype,
             "status": status, "stock": stock, "cash": cash,
+            "retail": _num(col(r, "Stock value (retail)")),
             "u30": _num(col(r, "Items sold 30d")), "u90": _num(col(r, "Items sold 90d")),
             "u12": _num(col(r, "Items sold 12mo")), "py12": _num(col(r, "Items sold PY 12mo")),
             "added": added,
@@ -182,10 +183,11 @@ def _score(x, max_inv):
     else:
         action = "Healthy"
 
+    price = (x.get("retail", 0) / stock) if (x.get("retail") and stock > 0) else None
     return {"title": x["title"], "vendor": x.get("vendor", ""), "type": x.get("ptype", "Uncategorised"),
-            "status": x["status"], "stock": stock, "u12": u12, "py12": py12, "cover": cover,
-            "cost": cost, "price": None, "margin": None, "cash": cash,
-            "risk": risk, "action": action, "is_new": is_new}
+            "status": x["status"], "stock": stock, "u30": u30, "u90": u90, "u12": u12, "py12": py12,
+            "cover": cover, "cost": cost, "price": price, "margin": None, "cash": cash,
+            "risk": risk, "action": action, "is_new": is_new, "variants": []}
 
 
 if __name__ == "__main__":

@@ -21,6 +21,7 @@ import streamlit as st
 
 import shopify_join as SJ
 import master_load as ML
+import buy_plan_view as BP
 import casa_report as C
 
 # ---------------------------------------------------------------------------
@@ -69,6 +70,8 @@ st.write("")
 # ---------------------------------------------------------------------------
 # Sidebar: shop name + live filters
 # ---------------------------------------------------------------------------
+view = st.sidebar.radio("View", ["📉 Dead-stock report", "🛒 Buy-plan"], index=0)
+st.sidebar.divider()
 st.sidebar.header("Settings")
 shop_name = st.sidebar.text_input("Shop name", value="Your shop")
 st.sidebar.markdown("**Filters** (re-filter the tables & chart live)")
@@ -118,6 +121,59 @@ def why(x):
     cash = SJ.money(x["cash"]) if x["cash"] is not None else "cost unknown"
     lead = "0 sales in 12 months" if x["u12"] == 0 else "{:.0f} sold last year".format(x["u12"])
     return "{} · {} of cover · {} tied up".format(lead, cover_txt(x["cover"]), cash)
+
+
+def render_buyplan(r):
+    """The Buy-Plan view: what to reorder (and how deep) and what to stop buying."""
+    bp = BP.compute_buyplan(r["in_stock"])
+    st.markdown("<div class='cs-hero'><div class='num'>Buy-Plan</div>"
+                "<div class='sub'>What to reorder before your next show — and what to stop buying — "
+                "so you prevent dead stock upstream instead of finding it later. Targets ~4 months of cover.</div></div>",
+                unsafe_allow_html=True)
+    if not bp["has_windows"]:
+        st.info("ℹ️ This upload only carries a 12-month sales total, so the plan uses velocity + cover "
+                "(no recent-momentum or seasonality). Upload the **master file** for demand momentum & trend.")
+
+    k1, k2, k3, k4 = st.columns(4)
+    k1.metric("To reinvest", SJ.money(bp["total_buy"]), "{} products to reorder".format(len(bp["reorder"])), delta_color="off")
+    k2.metric("Projected sell-through", SJ.money(bp["total_rev"]))
+    k3.metric("Stop buying", len(bp["stop"]), "prevent future dead stock", delta_color="off")
+    k4.metric("Cash already frozen there", SJ.money(bp["stop_cash"]))
+
+    if bp["seasons"]:
+        st.subheader("Demand momentum by category")
+        st.caption("Recent run-rate vs the yearly average. Heating up → buy ahead; cooling → ease off.")
+        sdf = pd.DataFrame([{"Category": s["cat"], "Trend": s["label"],
+                             "vs year avg": "{:+.0f}%".format((s["momentum"] - 1) * 100)} for s in bp["seasons"]])
+        st.dataframe(sdf, use_container_width=True, hide_index=True, height=min(320, 44 + 30 * len(sdf)))
+
+    st.subheader("🟢 Reorder now — proven sellers running low")
+    if bp["reorder"]:
+        rdf = pd.DataFrame([{
+            "Product": x["title"], "Brand": x["vendor"], "Sold/yr": int(x["u12"]),
+            "In stock": int(x["stock"]), "Cover": cover_txt(x["cover"]), "Reorder qty": x["reorder_qty"],
+            "Buy cost ($)": None if x["buy_cost"] is None else round(x["buy_cost"]),
+            "Sell-thru value ($)": None if x["rev_potential"] is None else round(x["rev_potential"]),
+        } for x in bp["reorder"]])
+        st.dataframe(rdf, use_container_width=True, hide_index=True, height=430)
+        st.caption("Quantity buys back to ~4 months of forward cover, nudged by recent momentum where available.")
+    else:
+        st.info("Nothing needs reordering right now.")
+
+    st.subheader("🔴 Stop buying — don't feed the dead stock")
+    if bp["stop"]:
+        s2 = pd.DataFrame([{
+            "Product": x["title"], "Brand": x["vendor"], "In stock": int(x["stock"]),
+            "Cover": cover_txt(x["cover"]), "Sold/yr": int(x["u12"]),
+            "Cash frozen ($)": None if x["cash"] is None else round(x["cash"]), "Why": x["reason"],
+        } for x in bp["stop"]])
+        st.dataframe(s2, use_container_width=True, hide_index=True, height=430)
+    else:
+        st.success("Nothing to stop — no dead stock building up. 🎉")
+
+    st.caption("This plan is built from your store's own sell-through. Region-specific depth "
+               "(buying for your local market rather than a rep's national pitch) comes once multiple "
+               "stores feed the network — a later phase.")
 
 
 # ---------------------------------------------------------------------------
@@ -202,6 +258,13 @@ if kind == "demo":
 elif kind == "master":
     st.caption("Loaded **master file** — {} in-stock products · **{} new arrivals** kept out of dead stock "
                "(added recently, no sales yet).".format(r["instock_count"], len(r.get("new_arrivals", []))))
+
+# ---------------------------------------------------------------------------
+# Buy-plan view (sidebar nav) — render it and stop before the dead-stock report
+# ---------------------------------------------------------------------------
+if "Buy-plan" in view:
+    render_buyplan(r)
+    st.stop()
 
 # ---------------------------------------------------------------------------
 # 1) HEADLINE

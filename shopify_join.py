@@ -174,6 +174,7 @@ def score(p, units12, max_inv):
 
     return {"title": p["title"], "vendor": p["vendor"], "type": p["type"] or "Uncategorised",
             "status": p["status"], "stock": stock, "u12": units12, "cover": cover,
+            "u30": None, "u90": None, "py12": None,   # single-window export: no recent/prior data
             "cost": cost, "price": price, "margin": margin, "cash": cash,
             "risk": risk, "action": action, "variants": p.get("variants", [])}
 
