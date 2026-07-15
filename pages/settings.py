@@ -16,11 +16,9 @@ st.toggle("ClearShelf Pro (unlocks the Trade-show buy AI)", key="pro_plan")
 st.caption("Demo: toggling this simulates the paid Pro plan. Real billing comes later.")
 
 st.divider()
-st.subheader("Filters — dead-stock report")
-st.caption("Raise these to shrink the report to just the items worth acting on today.")
-st.slider("Only show risk ≥", 0, 100, step=5, key="min_risk")
-st.number_input("Only show cash tied up ≥ ({})".format(st.session_state["currency"]),
-                min_value=0, step=50, key="min_cash")
+st.subheader("Dead-stock view")
+st.caption("Risk, cash, category, brand, action and search filters now live **on the Dead-stock report "
+           "itself** (under 🔎 Filter the report).")
 st.checkbox("Break down by size / colour (per variant)", key="variant_view",
             help="Needs the two-CSV upload; the master file is product-level.")
 

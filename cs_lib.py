@@ -47,7 +47,10 @@ def init_state():
     ss.setdefault("names", None)
     ss.setdefault("snapshotted", False)
     ss.setdefault("pro_plan", False)      # premium tier (gates the Trade-show buy AI)
-    ss.setdefault("cat_filter", [])       # dead-stock category filter
+    ss.setdefault("cat_filter", [])       # dead-stock filters
+    ss.setdefault("brand_filter", [])
+    ss.setdefault("action_filter", [])
+    ss.setdefault("prod_search", "")
     # push settings into the engine modules (used on the next data load)
     C.CURRENCY = ss["currency"]
     ML.NEW_DAYS = int(ss["grace_days"])
@@ -315,7 +318,6 @@ def _export_and_share(df, shop):
 def render_deadstock(r):
     ss = st.session_state
     shop = ss["shop_name"]
-    min_risk, min_cash, variant_view = ss["min_risk"], ss["min_cash"], ss["variant_view"]
 
     top_by_cash = sorted([x for x in r["at_risk"] if x["cash"]], key=lambda x: x["cash"], reverse=True)
     free_top10 = sum(x["cash"] for x in top_by_cash[:10])
@@ -334,22 +336,48 @@ def render_deadstock(r):
     k3.metric("Avg. cover (at-risk)", avg_cov)
     k4.metric("Free up (top 10)", money(free_top10))
 
-    shown = [x for x in r["in_stock"] if x["risk"] >= min_risk and (x["cash"] or 0) >= min_cash]
-
-    # --- category filter + product search (contextual) ---
+    # ---- Filter panel — everything to slice the report lives here ----
     cats = sorted({x["type"] for x in r["in_stock"] if x["type"] and x["type"] != "Uncategorised"})
-    fc1, fc2 = st.columns([3, 2])
-    with fc1:
-        if cats:
-            st.session_state["cat_filter"] = [c for c in st.session_state.get("cat_filter", []) if c in cats]
-            sel = st.multiselect("Filter by category", cats, key="cat_filter", placeholder="All categories")
-            if sel:
-                shown = [x for x in shown if x["type"] in sel]
-    with fc2:
-        q = st.text_input("Search products", placeholder="product or brand name…", key="prod_search")
-        if q:
-            ql = q.lower()
-            shown = [x for x in shown if ql in x["title"].lower() or ql in (x["vendor"] or "").lower()]
+    brands = sorted({x["vendor"] for x in r["in_stock"] if x["vendor"]})
+    actions = sorted({x["action"] for x in r["in_stock"]})
+    # drop any stale selections not in this dataset
+    ss["cat_filter"] = [c for c in ss.get("cat_filter", []) if c in cats]
+    ss["brand_filter"] = [b for b in ss.get("brand_filter", []) if b in brands]
+    ss["action_filter"] = [a for a in ss.get("action_filter", []) if a in actions]
+
+    with st.expander("🔎 Filter the report", expanded=True):
+        a1, a2, a3 = st.columns(3)
+        a1.slider("Risk score ≥", 0, 100, step=5, key="min_risk")
+        a2.number_input("Cash tied up ≥ ({})".format(C.CURRENCY), min_value=0, step=50, key="min_cash")
+        a3.text_input("Search product / brand", key="prod_search", placeholder="type to search…")
+        b1, b2, b3 = st.columns(3)
+        with b1:
+            if cats:
+                st.multiselect("Category", cats, key="cat_filter", placeholder="All categories")
+        with b2:
+            if brands:
+                st.multiselect("Brand", brands, key="brand_filter", placeholder="All brands")
+        with b3:
+            st.multiselect("Action", actions, key="action_filter", placeholder="All actions")
+
+    min_risk, min_cash, variant_view = ss["min_risk"], ss["min_cash"], ss["variant_view"]
+    cat_sel, brand_sel, action_sel = ss["cat_filter"], ss["brand_filter"], ss["action_filter"]
+    q = (ss.get("prod_search") or "").lower()
+
+    shown = []
+    for x in r["in_stock"]:
+        if x["risk"] < min_risk or (x["cash"] or 0) < min_cash:
+            continue
+        if cat_sel and x["type"] not in cat_sel:
+            continue
+        if brand_sel and x["vendor"] not in brand_sel:
+            continue
+        if action_sel and x["action"] not in action_sel:
+            continue
+        if q and q not in x["title"].lower() and q not in (x["vendor"] or "").lower():
+            continue
+        shown.append(x)
+    st.caption("**{} of {}** in-stock products match your filters.".format(len(shown), r["instock_count"]))
 
     st.subheader("The dead-stock map")
     st.caption("Bottom-right = healthy (sells fast). Top-left = dead stock (barely sells, months of cover). "
