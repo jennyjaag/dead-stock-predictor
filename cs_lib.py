@@ -75,11 +75,47 @@ def inject_css():
     st.markdown(CSS, unsafe_allow_html=True)
 
 
+def _auth_users():
+    """Logins live in secrets ([auth.users]); empty = no gate (local dev / pre-setup)."""
+    try:
+        return dict(st.secrets["auth"]["users"])
+    except Exception:
+        return {}
+
+
+def require_login():
+    """Gate the whole app behind a login when logins are configured in secrets."""
+    users = _auth_users()
+    if not users or st.session_state.get("authed_user"):
+        return
+    st.markdown("<div class='cs-brand' style='font-size:22px'>🐴 {} <span class='cs-by'>by {}</span></div>"
+                .format(APP_NAME, COMPANY), unsafe_allow_html=True)
+    st.markdown("<div class='cs-hero'><div class='num'>Log in</div>"
+                "<div class='sub'>Access is for subscribed tack shops.</div></div>", unsafe_allow_html=True)
+    u = st.text_input("Username")
+    p = st.text_input("Password", type="password")
+    if st.button("Log in", type="primary"):
+        if u in users and str(users[u]) == p:
+            st.session_state["authed_user"] = u
+            st.rerun()
+        else:
+            st.error("Incorrect username or password.")
+    st.caption("Not a member yet? Subscribe on the Equine Edge site to get your login.")
+    st.stop()
+
+
 def sidebar_brand():
     st.sidebar.markdown(
         "<div class='cs-brand'>🐴 {}<span class='cs-by'>by {}</span></div>"
         "<div class='cs-tag'>{}</div>".format(APP_NAME, COMPANY, TAGLINE),
         unsafe_allow_html=True)
+    user = st.session_state.get("authed_user")
+    if user:
+        lc1, lc2 = st.sidebar.columns([2, 1])
+        lc1.caption("👤 {}".format(user))
+        if lc2.button("Log out"):
+            del st.session_state["authed_user"]
+            st.rerun()
     if has_data():
         ss = st.session_state
         src = {"demo": "demo data", "master": "master file", "upload": "two CSVs"}.get(ss["kind"], "—")

@@ -73,6 +73,25 @@ Until that's set, the Email button politely tells the user to download the CSV/E
 instead — it never errors. (To test locally, put the same block in
 `.streamlit/secrets.toml`, which is gitignored.)
 
+## Customer logins ("pay first, then log in")
+The app is gated by a login **when logins are configured** (otherwise it's open, for
+local testing). Logins live in secrets, so passwords never touch the code or the repo.
+
+In Streamlit Cloud: **app → Settings → Secrets**, add a line per paying shop:
+
+```toml
+[auth.users]
+willowfarm  = "a-password-you-give-them"
+sunnyside   = "another-password"
+```
+
+Flow: a shop **pays on your WordPress site** → you **add a line here** and email them
+their username + password → they log in. To cancel a shop, delete their line.
+(This is the manual MVP; automating "payment → auto-create login" is a later step.)
+
+Locally, `.streamlit/secrets.toml` already has a demo login — **username `demo`,
+password `demo`** — so you can see the login screen. Change/remove it for real use.
+
 ## Notes
 - **Cost:** free on Streamlit Community Cloud for this size of app.
 - **The `.streamlit/config.toml`** (theme) and `demo_data/` are included, so the

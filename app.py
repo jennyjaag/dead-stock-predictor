@@ -17,6 +17,7 @@ st.set_page_config(page_title="ClearShelf", page_icon="🐴", layout="wide")
 
 cs_lib.init_state()
 cs_lib.inject_css()
+cs_lib.require_login()      # gate the app behind a login when logins are configured
 cs_lib.sidebar_brand()
 
 # Grouped navigation: each dict key is a collapsible section header in the sidebar.
