@@ -1,0 +1,420 @@
+"""
+cs_lib.py -- shared brain for the ClearShelf multi-page app.
+
+Holds: theme CSS, the sidebar brand, session-state setup, data loading, the
+"freed since last visit" snapshot, small formatting helpers, and the two big
+renderers (dead-stock report + buy-plan) so every page stays thin. No analytics
+live here that weren't already in shopify_join / master_load / buy_plan_view.
+"""
+
+import json
+import os
+from datetime import date, timedelta
+
+import altair as alt
+import pandas as pd
+import streamlit as st
+
+import shopify_join as SJ
+import master_load as ML
+import buy_plan_view as BP
+import casa_report as C
+
+APP_NAME = "ClearShelf"
+TAGLINE = "Dead-stock intelligence for independent tack shops"
+TODAY = date.today()
+SNAP_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cs_snapshots.json")
+DEMO_SALES = "demo_data/demo_sales.csv"
+DEMO_PRODS = "demo_data/demo_products.csv"
+
+
+# ---------------------------------------------------------------------------
+# state + theme
+# ---------------------------------------------------------------------------
+def init_state():
+    ss = st.session_state
+    ss.setdefault("shop_name", "Your shop")
+    ss.setdefault("currency", "$")
+    ss.setdefault("min_risk", 0)
+    ss.setdefault("min_cash", 0)
+    ss.setdefault("variant_view", False)
+    ss.setdefault("lead_time_weeks", 4)
+    ss.setdefault("grace_days", 90)
+    ss.setdefault("data", None)
+    ss.setdefault("kind", None)
+    ss.setdefault("names", None)
+    ss.setdefault("snapshotted", False)
+    # push settings into the engine modules (used on the next data load)
+    C.CURRENCY = ss["currency"]
+    ML.NEW_DAYS = int(ss["grace_days"])
+
+
+def inject_css():
+    st.markdown(CSS, unsafe_allow_html=True)
+
+
+def sidebar_brand():
+    st.sidebar.markdown(
+        "<div class='cs-brand'>🐴 {}</div><div class='cs-tag'>{}</div>".format(APP_NAME, TAGLINE),
+        unsafe_allow_html=True)
+    if has_data():
+        ss = st.session_state
+        src = {"demo": "demo data", "master": "master file", "upload": "two CSVs"}.get(ss["kind"], "—")
+        st.sidebar.caption("📂 Loaded: {} · {}".format(ss["shop_name"], src))
+    st.sidebar.divider()
+
+
+def page_title(title, subtitle, demo=False):
+    badge = " <span class='demo-badge'>⚠️ DEMO DATA</span>" if demo else ""
+    st.markdown("<div class='page-title'>{}{}</div><div class='page-sub'>{}</div>".format(
+        title, badge, subtitle), unsafe_allow_html=True)
+
+
+# ---------------------------------------------------------------------------
+# formatting helpers
+# ---------------------------------------------------------------------------
+def money(v):
+    return SJ.money(v)      # respects C.CURRENCY
+
+
+def cover_txt(c):
+    return "∞" if c == float("inf") else "{:.0f} mo".format(c)
+
+
+def badge_level(risk):
+    if risk >= C.MARKDOWN_SCORE:
+        return "red"
+    if risk >= C.WATCH_SCORE:
+        return "amber"
+    return "green"
+
+
+def recommend(x):
+    if x.get("action") == "New — too early to tell":
+        return "New — too early to tell", "watch"
+    if x["action"] == "Reorder":
+        return "Reorder — selling fast", "Now"
+    if x["action"] == "Sold out":
+        return "Sold out", "—"
+    if x["risk"] >= C.MARKDOWN_SCORE:
+        if x["u12"] == 0:
+            act = "Stop reordering · mark down 30%"
+        elif x["risk"] >= 85:
+            act = "Mark down 40% now"
+        else:
+            act = "Mark down 25% now"
+        return act, TODAY.strftime("%d %b %Y")
+    if x["risk"] >= C.WATCH_SCORE:
+        return "Watch — recheck in 3 weeks", (TODAY + timedelta(weeks=3)).strftime("%d %b %Y")
+    return "Healthy — no action", "—"
+
+
+def why(x):
+    cash = money(x["cash"]) if x["cash"] is not None else "cost unknown"
+    lead = "0 sales in 12 months" if x["u12"] == 0 else "{:.0f} sold last year".format(x["u12"])
+    return "{} · {} of cover · {} tied up".format(lead, cover_txt(x["cover"]), cash)
+
+
+# ---------------------------------------------------------------------------
+# data loading + access
+# ---------------------------------------------------------------------------
+def has_data():
+    return st.session_state.get("data") is not None
+
+
+def get_r():
+    return st.session_state.get("data")
+
+
+def set_data(r, kind, names):
+    ss = st.session_state
+    ss["data"], ss["kind"], ss["names"] = r, kind, names
+
+
+def compute_from(kind, s_src, p_src):
+    """kind in {'master','upload','demo'}. Returns the result dict or raises."""
+    if kind == "master":
+        return ML.load_master(s_src)
+    sales = SJ.load_sales(s_src)
+    prod = SJ.load_products(p_src)
+    if not sales:
+        raise ValueError("The sales file is missing 'Product title' / 'Net items sold'.")
+    if not prod:
+        raise ValueError("The products file is missing 'Handle' / 'Title' / 'Variant Inventory Qty'.")
+    return SJ.compute(prod, sales)
+
+
+def require_data():
+    """Guard for tool pages — if no data, point the user back to Home."""
+    if not has_data():
+        st.info("No data loaded yet. Head to **Home** to upload your files (or try the demo).")
+        st.page_link("pages/home.py", label="Go to Home", icon="🏠")
+        st.stop()
+
+
+# ---------------------------------------------------------------------------
+# "freed since last visit" snapshot (small local JSON, keyed by shop name)
+# ---------------------------------------------------------------------------
+def _load_snaps():
+    try:
+        with open(SNAP_FILE) as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def _save_snaps(d):
+    try:
+        with open(SNAP_FILE, "w") as f:
+            json.dump(d, f)
+    except Exception:
+        pass
+
+
+def freed_since_last_visit(shop, current_cash):
+    """Return $ freed vs the last saved snapshot (once per session), else None."""
+    if st.session_state.get("snapshotted"):
+        return st.session_state.get("freed_val")
+    snaps = _load_snaps()
+    prev = snaps.get(shop)
+    freed = None
+    if prev is not None and prev.get("cash_at_risk") is not None:
+        freed = prev["cash_at_risk"] - current_cash
+    snaps[shop] = {"cash_at_risk": current_cash, "ts": TODAY.isoformat()}
+    _save_snaps(snaps)
+    st.session_state["snapshotted"] = True
+    st.session_state["freed_val"] = freed
+    return freed
+
+
+# ===========================================================================
+# RENDERERS
+# ===========================================================================
+def _hl(v):
+    if not isinstance(v, (int, float)):
+        return ""
+    if v >= C.MARKDOWN_SCORE:
+        return "background-color:#fde2e1;color:#a11a12;font-weight:700"
+    if v >= C.WATCH_SCORE:
+        return "background-color:#fdf3d8;color:#8a6100;font-weight:700"
+    return "background-color:#e3f6e5;color:#1c6b28;font-weight:700"
+
+
+def render_deadstock(r):
+    ss = st.session_state
+    shop = ss["shop_name"]
+    min_risk, min_cash, variant_view = ss["min_risk"], ss["min_cash"], ss["variant_view"]
+
+    top_by_cash = sorted([x for x in r["at_risk"] if x["cash"]], key=lambda x: x["cash"], reverse=True)
+    free_top10 = sum(x["cash"] for x in top_by_cash[:10])
+
+    st.markdown(
+        "<div class='cs-hero'><div class='num'>{} of your cash is frozen in dead stock.</div>"
+        "<div class='sub'>{} · {} at-risk products · as of {}</div></div>".format(
+            money(r["cash_at_risk"]), shop, r["at_risk_count"], TODAY.strftime("%d %b %Y")),
+        unsafe_allow_html=True)
+
+    finite = [x["cover"] for x in r["at_risk"] if x["cover"] != float("inf")]
+    avg_cov = "{:.0f} mo".format(sum(finite) / len(finite)) if finite else "∞"
+    k1, k2, k3, k4 = st.columns(4)
+    k1.metric("Cash at risk", money(r["cash_at_risk"]))
+    k2.metric("Dead / at-risk items", r["at_risk_count"], "{} never sold".format(r["dead_count"]), delta_color="off")
+    k3.metric("Avg. cover (at-risk)", avg_cov)
+    k4.metric("Free up (top 10)", money(free_top10))
+
+    shown = [x for x in r["in_stock"] if x["risk"] >= min_risk and (x["cash"] or 0) >= min_cash]
+
+    st.subheader("The dead-stock map")
+    st.caption("Bottom-right = healthy (sells fast). Top-left = dead stock (barely sells, months of cover). "
+               "Bigger dot = more cash tied up.")
+    cc1, cc2 = st.columns([3, 2])
+    with cc1:
+        if shown:
+            cdf = pd.DataFrame([{
+                "Product": x["title"], "Sold/yr": x["u12"],
+                "Cover (mo)": min(x["cover"], 60) if x["cover"] != float("inf") else 60,
+                "Risk": ("Act now" if x["risk"] >= C.MARKDOWN_SCORE else
+                         "Watch" if x["risk"] >= C.WATCH_SCORE else "Healthy"),
+                "Cash": x["cash"] or 0,
+            } for x in shown])
+            chart = (alt.Chart(cdf).mark_circle(opacity=0.75).encode(
+                x=alt.X("Sold/yr:Q", title="Units sold last year (velocity)"),
+                y=alt.Y("Cover (mo):Q", title="Months of cover (capped at 60)"),
+                size=alt.Size("Cash:Q", scale=alt.Scale(range=[30, 900]), legend=None),
+                color=alt.Color("Risk:N", scale=alt.Scale(
+                    domain=["Act now", "Watch", "Healthy"], range=["#d62d20", "#e0a825", "#1e8c3c"]),
+                    legend=alt.Legend(title="", orient="top")),
+                tooltip=["Product", "Sold/yr", "Cover (mo)", alt.Tooltip("Cash:Q", format="$,.0f")],
+            ).properties(height=340).configure_axis(grid=True, gridColor="#eef1f4"))
+            st.altair_chart(chart, use_container_width=True)
+        else:
+            st.info("No products match the current filters.")
+    with cc2:
+        cat = {}
+        for x in shown:
+            if x["risk"] >= C.AT_RISK_SCORE and x["cash"]:
+                cat[x["type"]] = cat.get(x["type"], 0) + x["cash"]
+        if cat and len(cat) > 1:
+            catdf = pd.DataFrame(sorted(cat.items(), key=lambda kv: kv[1], reverse=True)[:8],
+                                 columns=["Category", "Cash at risk"]).set_index("Category")
+            st.caption("Cash at risk by category")
+            st.bar_chart(catdf, horizontal=True, color="#d62d20", height=340)
+        else:
+            st.caption("Category breakdown not available for this file.")
+
+    st.markdown("<div class='cs-quickwin'>💡 If you act on the top 10 items, you free up "
+                "<b>{}</b> to reinvest in the stock that actually sells.</div>".format(money(free_top10)),
+                unsafe_allow_html=True)
+
+    st.subheader("Do this first — your action list")
+    act_items = [x for x in shown if x["risk"] >= C.AT_RISK_SCORE][:25]
+    if act_items:
+        rows = ""
+        for x in act_items:
+            lvl = badge_level(x["risk"])
+            action, when = recommend(x)
+            rows += ("<tr><td class='prod'>{n}<span class='why'>{v} · {t}<br>{w}</span></td>"
+                     "<td><span class='pill {lvl}'>{r}</span></td><td class='num'>{cash}</td>"
+                     "<td class='act'>{a}<span class='date'>{d}</span></td></tr>").format(
+                n=C.esc(x["title"]), v=C.esc(x["vendor"]), t=C.esc(x["type"]), w=C.esc(why(x)),
+                lvl=lvl, r=x["risk"], cash=money(x["cash"]) if x["cash"] is not None else "—",
+                a=C.esc(action), d=when)
+        st.markdown("<div style='overflow-x:auto'><table class='cs'><thead><tr>"
+                    "<th>Product &amp; why</th><th>Risk</th><th class='num'>Cash tied up</th>"
+                    "<th>Recommended action</th></tr></thead><tbody>{}</tbody></table></div>".format(rows),
+                    unsafe_allow_html=True)
+    else:
+        st.success("Nothing above the risk threshold — inventory looks healthy. 🎉")
+
+    has_variants = any(len(x.get("variants") or []) for x in shown)
+    if variant_view and has_variants:
+        vrows = []
+        for x in shown:
+            for v in (x.get("variants") or []):
+                if v["stock"] <= 0:
+                    continue
+                vcash = v["stock"] * v["cost"] if v["cost"] else None
+                if (vcash or 0) < min_cash:
+                    continue
+                vrows.append({"Product": x["title"], "Variant": v["label"], "Brand": x["vendor"],
+                              "Risk (product)": x["risk"], "Variant stock": int(v["stock"]),
+                              "Cover (product)": cover_txt(x["cover"]), "Sold/yr (product)": int(x["u12"]),
+                              "Variant cash ($)": None if vcash is None else round(vcash),
+                              "Action": recommend(x)[0]})
+        with st.expander("📋 All in-stock **variants** (size/colour) — {} shown".format(len(vrows)), expanded=True):
+            st.caption("Stock & cash are per variant; velocity/risk are the product's overall figures.")
+            vdf = pd.DataFrame(vrows)
+            if len(vdf):
+                st.dataframe(vdf.style.map(_hl, subset=["Risk (product)"]), use_container_width=True,
+                             hide_index=True, height=460)
+            else:
+                st.info("No variants match the current filters.")
+    else:
+        if variant_view and not has_variants:
+            st.info("ℹ️ Variant breakdown needs the two-CSV upload (the master file is product-level).")
+        with st.expander("📋 All in-stock products (sortable) — {} shown".format(len(shown))):
+            df = pd.DataFrame([{
+                "Product": x["title"], "Brand": x["vendor"], "Type": x["type"], "Risk": x["risk"],
+                "Stock": int(x["stock"]), "Cover": cover_txt(x["cover"]), "Sold/yr": int(x["u12"]),
+                "Cash @cost ($)": None if x["cash"] is None else round(x["cash"]),
+                "Action": recommend(x)[0], "Status": x["status"]} for x in shown])
+            if len(df):
+                st.dataframe(df.style.map(_hl, subset=["Risk"]), use_container_width=True,
+                             hide_index=True, height=460)
+            else:
+                st.info("No products match the current filters. Lower the thresholds in Settings.")
+
+    with st.expander("⚠︎ Data-quality flags & how the columns were mapped"):
+        for title, level, body in r["flags"]:
+            {"critical": st.error, "warn": st.warning, "info": st.info}[level]("**{}** — {}".format(title, body))
+
+    names = st.session_state.get("names") or ("sales", "products")
+    html = SJ.render_html(r, names[0], names[1]).replace("Casa Equestre", shop)
+    st.download_button("⬇︎  Download the full report (HTML — open & print to PDF)", data=html,
+                       file_name="{}_dead_stock_report.html".format(shop.replace(" ", "_")),
+                       mime="text/html", type="primary")
+
+
+def render_buyplan(r, reorder_only=False):
+    ss = st.session_state
+    bp = BP.compute_buyplan(r["in_stock"])
+    lead = ss["lead_time_weeks"]
+
+    if not bp["has_windows"]:
+        st.info("ℹ️ This upload only carries a 12-month sales total, so the plan uses velocity + cover "
+                "(no recent-momentum or seasonality). Upload the **master file** for demand momentum & trend.")
+
+    k1, k2, k3, k4 = st.columns(4)
+    k1.metric("To reinvest", money(bp["total_buy"]), "{} to reorder".format(len(bp["reorder"])), delta_color="off")
+    k2.metric("Projected sell-through", money(bp["total_rev"]))
+    k3.metric("Stop buying", len(bp["stop"]), "prevent future dead stock", delta_color="off")
+    k4.metric("Cash frozen there", money(bp["stop_cash"]))
+
+    if bp["seasons"] and not reorder_only:
+        st.subheader("Demand momentum by category")
+        st.caption("Recent run-rate vs the yearly average. Heating up → buy ahead; cooling → ease off.")
+        sdf = pd.DataFrame([{"Category": s["cat"], "Trend": s["label"],
+                             "vs year avg": "{:+.0f}%".format((s["momentum"] - 1) * 100)} for s in bp["seasons"]])
+        st.dataframe(sdf, use_container_width=True, hide_index=True, height=min(320, 44 + 30 * len(sdf)))
+
+    st.subheader("🟢 Reorder now — proven sellers running low")
+    st.caption("Quantity buys back to ~4 months of cover. Place orders ~{} weeks ahead of when you need them "
+               "(your lead time — change it in Settings).".format(lead))
+    if bp["reorder"]:
+        rdf = pd.DataFrame([{
+            "Product": x["title"], "Brand": x["vendor"], "Sold/yr": int(x["u12"]),
+            "In stock": int(x["stock"]), "Cover": cover_txt(x["cover"]), "Reorder qty": x["reorder_qty"],
+            "Buy cost ($)": None if x["buy_cost"] is None else round(x["buy_cost"]),
+            "Sell-thru value ($)": None if x["rev_potential"] is None else round(x["rev_potential"]),
+        } for x in bp["reorder"]])
+        st.dataframe(rdf, use_container_width=True, hide_index=True, height=430)
+    else:
+        st.info("Nothing needs reordering right now.")
+
+    if not reorder_only:
+        st.subheader("🔴 Stop buying — don't feed the dead stock")
+        if bp["stop"]:
+            s2 = pd.DataFrame([{
+                "Product": x["title"], "Brand": x["vendor"], "In stock": int(x["stock"]),
+                "Cover": cover_txt(x["cover"]), "Sold/yr": int(x["u12"]),
+                "Cash frozen ($)": None if x["cash"] is None else round(x["cash"]), "Why": x["reason"],
+            } for x in bp["stop"]])
+            st.dataframe(s2, use_container_width=True, hide_index=True, height=430)
+        else:
+            st.success("Nothing to stop — no dead stock building up. 🎉")
+
+
+CSS = """
+<style>
+  .block-container {padding-top: 2rem; max-width: 1200px;}
+  #MainMenu, footer {visibility: hidden;}
+  .cs-brand {font-size: 16px; font-weight: 800; color: #0F6E56; letter-spacing:.02em;}
+  .cs-tag {color:#5a6b63; font-size:12px; margin-top:-3px;}
+  .page-title {font-size: 24px; font-weight: 800; color:#12261f;}
+  .page-sub {color:#5a6b63; font-size:13.5px; margin: 2px 0 16px;}
+  .demo-badge {font-size:11px; font-weight:700; color:#8a6100; background:#fdf3d8;
+               padding:2px 8px; border-radius:10px; vertical-align:middle; margin-left:8px;}
+  .cs-hero {background: linear-gradient(100deg,#0f2b23,#134e3b); color:#fff; border-radius:16px;
+            padding: 24px 28px; margin: 4px 0 18px;}
+  .cs-hero .num {font-size: 40px; font-weight: 800; line-height:1.05;}
+  .cs-hero .sub {font-size: 14px; opacity:.85; margin-top:6px;}
+  .cs-quickwin {background:#e9f4ef; border:1px solid #c4e2d6; border-radius:12px;
+                padding:14px 18px; font-size:15px; color:#0c4a3a; margin: 4px 0 18px;}
+  .cs-quickwin b {color:#0F6E56;}
+  div[data-testid="stMetric"] {background:#f4f8f6; border:1px solid #dceae3; border-radius:12px; padding:14px 16px;}
+  .jump {display:block; background:#f4f8f6; border:1px solid #dceae3; border-radius:14px; padding:18px 20px;
+         text-decoration:none; height:100%;}
+  .jump h4 {margin:0 0 4px; color:#12261f; font-size:16px;}
+  .jump p {margin:0; color:#5a6b63; font-size:12.5px;}
+  .pill {display:inline-block; padding:3px 10px; border-radius:20px; font-weight:700; font-size:12px;}
+  .pill.red{background:#fde2e1;color:#a11a12;} .pill.amber{background:#fdf3d8;color:#8a6100;} .pill.green{background:#e3f6e5;color:#1c6b28;}
+  table.cs {width:100%; border-collapse:collapse; font-size:13px;}
+  table.cs th{text-align:left; color:#5a6b63; font-size:10.5px; text-transform:uppercase; letter-spacing:.04em; padding:8px 10px; border-bottom:1px solid #dceae3;}
+  table.cs td{padding:9px 10px; border-bottom:1px solid #eef3f0; vertical-align:top;}
+  table.cs td.prod{font-weight:600; color:#12261f;}
+  table.cs .why{color:#5a6b63; font-size:11.5px; display:block; margin-top:2px;}
+  table.cs td.num{text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap;}
+  table.cs td.act{white-space:nowrap; font-weight:600;}
+  table.cs td.act .date{display:block; color:#98a2b3; font-weight:400; font-size:11px;}
+</style>
+"""

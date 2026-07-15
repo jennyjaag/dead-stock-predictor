@@ -4,6 +4,9 @@ __pycache__/
 *.pyo
 .DS_Store
 
+# Local "freed since last visit" snapshots — contain real cash figures per shop.
+cs_snapshots.json
+
 # Generated report artifacts — these can contain REAL client numbers,
 # so never commit them to the (potentially public) repo.
 report.html

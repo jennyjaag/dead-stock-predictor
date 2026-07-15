@@ -1,9 +1,9 @@
-# ClearShelf — Streamlit theme (so the app doesn't look default-grey)
+# ClearShelf theme — deep-green (Equine Edge) palette
 [theme]
-primaryColor = "#0f766e"            # deep teal — buttons, sliders, focus
+primaryColor = "#0F6E56"
 backgroundColor = "#ffffff"
-secondaryBackgroundColor = "#f1f4f7"  # sidebar + card backgrounds
-textColor = "#182230"
+secondaryBackgroundColor = "#eef3f0"
+textColor = "#12261f"
 font = "sans serif"
 
 [server]
