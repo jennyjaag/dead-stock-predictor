@@ -21,7 +21,7 @@ import buy_plan_view as BP
 import casa_report as C
 
 APP_NAME = "ClearShelf"
-COMPANY = "Rein"          # parent company — shown as "ClearShelf by Rein" (easy to change)
+COMPANY = "Equine Edge"    # parent — shown as "ClearShelf by Equine Edge" (easy to change)
 TAGLINE = "Dead-stock intelligence for independent tack shops"
 TODAY = date.today()
 SNAP_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cs_snapshots.json")
@@ -405,6 +405,13 @@ CSS = """
 <style>
   .block-container {padding-top: 2rem; max-width: 1200px;}
   #MainMenu, footer {visibility: hidden;}
+  /* Responsive: let card/column rows WRAP on narrow windows instead of
+     overflowing (which was pushing the page wider than the window and
+     clipping the headlines). */
+  [data-testid="stHorizontalBlock"] {flex-wrap: wrap;}
+  [data-testid="stColumn"] {min-width: 210px;}
+  .page-title, .page-sub {overflow-wrap: anywhere; max-width: 100%;}
+  .cs-hero .num {overflow-wrap: anywhere;}
   .cs-brand {font-size: 16px; font-weight: 800; color: #1F5A43; letter-spacing:.02em;}
   .cs-by {font-size:11px; font-weight:600; color:#B07B4C; margin-left:6px;}
   .cs-tag {color:#5a6b5e; font-size:12px; margin-top:-3px;}
