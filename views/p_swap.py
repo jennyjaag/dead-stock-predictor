@@ -83,8 +83,8 @@ matches.sort(key=lambda m: m["cash"], reverse=True)
 # --- search + filters ---
 fs = st.columns([2, 2, 2])
 q = fs[0].text_input("Search", key="swap_search", placeholder="product, brand, shop or state…")
-regions = sorted({m["partner"]["region"] for m in matches})
-region_sel = fs[1].multiselect("Region", regions, key="swap_region", placeholder="All regions")
+states = sorted({m["partner"]["state"] for m in matches})
+state_sel = fs[1].multiselect("State", states, key="swap_state", placeholder="All states")
 brands = sorted({m["brand"] for m in matches if m["brand"] != "—"})
 brand_sel = fs[2].multiselect("Brand", brands, key="swap_brand", placeholder="All brands")
 
@@ -92,7 +92,7 @@ ql = q.lower().strip()
 
 
 def keep(m):
-    if region_sel and m["partner"]["region"] not in region_sel:
+    if state_sel and m["partner"]["state"] not in state_sel:
         return False
     if brand_sel and m["brand"] not in brand_sel:
         return False
