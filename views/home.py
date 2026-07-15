@@ -65,13 +65,13 @@ if freed is not None and freed != 0:
 st.subheader("Jump back in")
 j = st.columns(3)
 with j[0]:
-    st.page_link("pages/p_deadstock.py", label="📉  Dead-stock report", use_container_width=True)
+    st.page_link("views/p_deadstock.py", label="📉  Dead-stock report", use_container_width=True)
     st.caption("What's stuck right now.")
 with j[1]:
-    st.page_link("pages/p_buyai.py", label="🛒  Trade-show buy AI", use_container_width=True)
+    st.page_link("views/p_buyai.py", label="🛒  Trade-show buy AI", use_container_width=True)
     st.caption("What to buy, in what depth.")
 with j[2]:
-    st.page_link("pages/p_reorder.py", label="🔁  Reorder engine", use_container_width=True)
+    st.page_link("views/p_reorder.py", label="🔁  Reorder engine", use_container_width=True)
     st.caption("Right quantity + timing.")
 
 st.divider()

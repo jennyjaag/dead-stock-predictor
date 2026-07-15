@@ -61,14 +61,14 @@ def init_state():
                 "text": "Interested in your Horse Pilot AirVests. What would you want in return?"}],
         }
         ss["threads_seeded"] = True
+    # push settings into the engine modules (used on the next data load)
+    C.CURRENCY = ss["currency"]
+    ML.NEW_DAYS = int(ss["grace_days"])
 
 
 def add_message(store, text, sender="you"):
     st.session_state.setdefault("threads", {}).setdefault(store, []).append(
         {"from": sender, "text": text})
-    # push settings into the engine modules (used on the next data load)
-    C.CURRENCY = ss["currency"]
-    ML.NEW_DAYS = int(ss["grace_days"])
 
 
 def inject_css():
@@ -186,7 +186,7 @@ def require_data():
     """Guard for tool pages — if no data, point the user back to Home."""
     if not has_data():
         st.info("No data loaded yet. Head to **Home** to upload your files (or try the demo).")
-        st.page_link("pages/home.py", label="Go to Home", icon="🏠")
+        st.page_link("views/home.py", label="Go to Home", icon="🏠")
         st.stop()
 
 

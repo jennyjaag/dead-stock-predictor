@@ -66,7 +66,7 @@ def contact(store, item):
 if not cs_lib.has_data():
     st.info("Load your shop's data on **Home** and this page will match *your* dead stock "
             "to partner shops that want it.")
-    st.page_link("pages/home.py", label="Go to Home", icon="🏠")
+    st.page_link("views/home.py", label="Go to Home", icon="🏠")
     st.stop()
 
 r = cs_lib.get_r()

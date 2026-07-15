@@ -33,4 +33,4 @@ st.caption("Shop name, currency and filters apply immediately. The grace period 
            "load data (Home → Load different data, then re-open your file).")
 
 if cs_lib.has_data():
-    st.page_link("pages/home.py", label="← Back to Home", icon="🏠")
+    st.page_link("views/home.py", label="← Back to Home", icon="🏠")

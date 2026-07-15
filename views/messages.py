@@ -13,7 +13,7 @@ threads = st.session_state.get("threads", {})
 if not threads:
     st.info("No messages yet. Open the **Swap network**, find a shop that wants your dead stock, and hit "
             "💬 Contact to start a conversation.")
-    st.page_link("pages/p_swap.py", label="Go to Swap network", icon="🔄")
+    st.page_link("views/p_swap.py", label="Go to Swap network", icon="🔄")
     st.stop()
 
 shops = list(threads.keys())
