@@ -55,12 +55,12 @@ def best_match(item):
 @st.dialog("Message a partner shop")
 def contact(store, item):
     st.markdown("**To:** {}".format(store))
-    st.text_area("Message", key="swap_msg",
-                 value="Hi {} — I have {} in stock that you might be selling well. "
-                       "Open to a swap or sale through ClearShelf?".format(store, item))
+    default = ("Hi {} — I have {} in stock that you might be selling well. "
+               "Open to a swap or sale through ClearShelf?".format(store, item))
+    msg = st.text_area("Message", value=default, key="swap_msg")
     if st.button("Send message", type="primary"):
-        st.success("Message sent to {}. (Demo — in the live network this opens a thread "
-                   "between your two shops.)".format(store))
+        cs_lib.add_message(store, msg, "you")
+        st.success("Sent to {} — continue the conversation in 💬 Messages (left sidebar).".format(store))
 
 
 if not cs_lib.has_data():
@@ -79,15 +79,41 @@ for x in dead:
     matches.append({"item": x["title"], "brand": x["vendor"] or "—", "type": x["type"],
                     "qty": int(x["stock"]), "cash": x["cash"], "partner": partner, "reason": reason})
 matches.sort(key=lambda m: m["cash"], reverse=True)
-top = matches[:15]
+
+# --- search + filters ---
+fs = st.columns([2, 2, 2])
+q = fs[0].text_input("Search", key="swap_search", placeholder="product, brand, shop or state…")
+regions = sorted({m["partner"]["region"] for m in matches})
+region_sel = fs[1].multiselect("Region", regions, key="swap_region", placeholder="All regions")
+brands = sorted({m["brand"] for m in matches if m["brand"] != "—"})
+brand_sel = fs[2].multiselect("Brand", brands, key="swap_brand", placeholder="All brands")
+
+ql = q.lower().strip()
+
+
+def keep(m):
+    if region_sel and m["partner"]["region"] not in region_sel:
+        return False
+    if brand_sel and m["brand"] not in brand_sel:
+        return False
+    if ql:
+        hay = " ".join([m["item"], m["brand"], m["partner"]["name"],
+                        m["partner"]["state"], m["partner"]["region"]]).lower()
+        if ql not in hay:
+            return False
+    return True
+
+
+filtered = [m for m in matches if keep(m)]
+top = filtered[:15]
 
 m1, m2, m3 = st.columns(3)
-m1.metric("Frozen cash you could move", cs_lib.money(sum(m["cash"] for m in top)))
-m2.metric("Matched swaps", len(matches))
-m3.metric("Partner shops interested", len({m["partner"]["name"] for m in top}))
+m1.metric("Frozen cash you could move", cs_lib.money(sum(m["cash"] for m in filtered)))
+m2.metric("Matched swaps", len(filtered))
+m3.metric("Partner shops", len({m["partner"]["name"] for m in filtered}))
 
-st.caption("Matched **{}** of your {} dead items to partner shops that carry the brand or sell the category. "
-           "Showing the top {} by cash frozen.".format(len(matches), len(dead), len(top)))
+st.caption("Matched **{}** of your {} dead items to partner shops (carrying the brand or selling the category). "
+           "Showing the top {} by cash frozen.".format(len(filtered), len(dead), len(top)))
 
 # header row
 h = st.columns([3, 2.4, 2.2, 1.4])

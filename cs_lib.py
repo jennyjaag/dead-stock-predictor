@@ -51,6 +51,21 @@ def init_state():
     ss.setdefault("brand_filter", [])
     ss.setdefault("action_filter", [])
     ss.setdefault("prod_search", "")
+    ss.setdefault("threads", {})          # swap-network messages: {shop: [ {from, text} ]}
+    if not ss.get("threads_seeded"):      # a couple of demo conversations to start with
+        ss["threads"] = {
+            "Willow Farm Tack": [{"from": "them",
+                "text": "Hi! We keep selling out of Animo show coats — saw you've got some sitting. "
+                        "Would you swap for fly rugs?"}],
+            "Sunnyside Equestrian": [{"from": "them",
+                "text": "Interested in your Horse Pilot AirVests. What would you want in return?"}],
+        }
+        ss["threads_seeded"] = True
+
+
+def add_message(store, text, sender="you"):
+    st.session_state.setdefault("threads", {}).setdefault(store, []).append(
+        {"from": sender, "text": text})
     # push settings into the engine modules (used on the next data load)
     C.CURRENCY = ss["currency"]
     ML.NEW_DAYS = int(ss["grace_days"])
@@ -614,5 +629,8 @@ CSS = """
   table.cs td.num{text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap;}
   table.cs td.act{white-space:nowrap; font-weight:600;}
   table.cs td.act .date{display:block; color:#9a9686; font-weight:400; font-size:11px;}
+  .msg-row {display:flex; margin:6px 0;}
+  .msg-them {background:#fff; border:1px solid #e0dccf; border-radius:14px 14px 14px 4px; padding:9px 13px; max-width:78%; font-size:13.5px; color:#16241F;}
+  .msg-you {background:#1F5A43; color:#fff; border-radius:14px 14px 4px 14px; padding:9px 13px; max-width:78%; margin-left:auto; font-size:13.5px;}
 </style>
 """

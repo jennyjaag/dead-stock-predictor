@@ -23,6 +23,7 @@ cs_lib.sidebar_brand()
 pages = {
     " ": [
         st.Page("pages/home.py", title="Home", icon="🏠", default=True),
+        st.Page("pages/messages.py", title="Messages", icon="💬"),
     ],
     "Dead stock": [
         st.Page("pages/p_deadstock.py", title="Dead-stock report", icon="📉"),
