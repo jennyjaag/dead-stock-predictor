@@ -70,6 +70,21 @@ def page_title(title, subtitle, demo=False):
         title, badge, subtitle), unsafe_allow_html=True)
 
 
+def problem_note(md):
+    """The pain this module solves (with the poll % where relevant)."""
+    st.markdown("<div class='cs-problem'>🎯 {}</div>".format(md), unsafe_allow_html=True)
+
+
+def pricing_note(md):
+    """Who pays / business model — shown at the foot of each module page."""
+    st.markdown("<div class='cs-pricing'>💷 <b>Business model:</b> {}</div>".format(md), unsafe_allow_html=True)
+
+
+def how_it_works(points):
+    st.markdown("##### How it works")
+    st.markdown("\n".join("- {}".format(p) for p in points))
+
+
 # ---------------------------------------------------------------------------
 # formatting helpers
 # ---------------------------------------------------------------------------
@@ -394,6 +409,10 @@ CSS = """
   .page-sub {color:#5a6b63; font-size:13.5px; margin: 2px 0 16px;}
   .demo-badge {font-size:11px; font-weight:700; color:#8a6100; background:#fdf3d8;
                padding:2px 8px; border-radius:10px; vertical-align:middle; margin-left:8px;}
+  .cs-problem {background:#fbf7ec; border:1px solid #ece0c3; border-radius:12px; padding:13px 16px;
+               font-size:14px; color:#6a5b33; margin: 2px 0 16px;}
+  .cs-pricing {background:#e9f4ef; border:1px solid #c4e2d6; border-radius:12px; padding:12px 16px;
+               font-size:13.5px; color:#0c4a3a; margin: 18px 0 6px;}
   .cs-hero {background: linear-gradient(100deg,#0f2b23,#134e3b); color:#fff; border-radius:16px;
             padding: 24px 28px; margin: 4px 0 18px;}
   .cs-hero .num {font-size: 40px; font-weight: 800; line-height:1.05;}
