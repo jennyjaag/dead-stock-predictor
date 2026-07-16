@@ -86,21 +86,27 @@ def inject_css():
 # busy fetching from Shopify. (Apple's 🐎 faces left, so it canters right→left.)
 _HORSE_HTML = """
 <div style="text-align:center;padding:22px 0">
-  <div style="position:relative;height:60px;max-width:520px;margin:0 auto;overflow:hidden;
+  <div style="position:relative;height:64px;max-width:520px;margin:0 auto;overflow:hidden;
               border-bottom:3px dashed #cdb89a">
     <div class="eq-horse">🐎</div>
   </div>
-  <div style="margin-top:12px;color:#1F5A43;font-weight:600;font-size:15px">%MSG%</div>
+  <div style="margin-top:12px;color:#1F5A43;font-weight:600;font-size:15px">%MSG%
+    <span class="eq-dot">●</span><span class="eq-dot">●</span><span class="eq-dot">●</span></div>
   <style>
-    .eq-horse{position:absolute;bottom:6px;left:100%;font-size:44px;will-change:left,transform;
-      animation:eqcanter 2.4s cubic-bezier(.4,0,.6,1) infinite}
-    @keyframes eqcanter{
-      0%{left:100%;transform:translateY(0) rotate(-2deg)}
-      25%{transform:translateY(-11px) rotate(3deg)}
-      50%{transform:translateY(0) rotate(-2deg)}
-      75%{transform:translateY(-8px) rotate(3deg)}
-      100%{left:-70px;transform:translateY(0) rotate(-2deg)}
+    .eq-horse{position:absolute;bottom:6px;left:100%;font-size:46px;will-change:left,transform;
+      animation:eqgallop 1.8s linear infinite}
+    @keyframes eqgallop{
+      0%{left:100%;transform:translateY(0) rotate(-3deg)}
+      15%{transform:translateY(-15px) rotate(4deg)}
+      30%{transform:translateY(0) rotate(-3deg)}
+      45%{transform:translateY(-11px) rotate(4deg)}
+      60%{transform:translateY(0) rotate(-3deg)}
+      100%{left:-72px;transform:translateY(-4px) rotate(-3deg)}
     }
+    .eq-dot{color:#B07B4C;opacity:.2;animation:eqblink 1s infinite}
+    .eq-dot:nth-child(2){animation-delay:.2s}
+    .eq-dot:nth-child(3){animation-delay:.4s}
+    @keyframes eqblink{0%,100%{opacity:.2}50%{opacity:1}}
   </style>
 </div>
 """
@@ -883,6 +889,11 @@ CSS = """
   [data-testid="stMain"] {overflow-x: hidden;}
   .page-title, .page-sub, .cs-hero .num, .cs-hero .sub, h1, h2, h3, p {
     overflow-wrap: anywhere; word-break: break-word; white-space: normal;}
+  /* Sidebar: never clip the first letter of nav/section labels. */
+  [data-testid="stSidebar"] {overflow-x: hidden;}
+  [data-testid="stSidebarUserContent"], [data-testid="stSidebarNav"],
+  [data-testid="stSidebarContent"] {padding-left: 14px !important; overflow-x: visible;}
+  [data-testid="stSidebar"] * {overflow-wrap: anywhere;}
   .cs-brand {font-size: 16px; font-weight: 800; color: #1F5A43; letter-spacing:.02em;}
   .cs-by {font-size:11px; font-weight:600; color:#B07B4C; margin-left:6px;}
   .cs-tag {color:#5a6b5e; font-size:12px; margin-top:-3px;}
