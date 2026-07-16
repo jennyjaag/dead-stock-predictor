@@ -28,3 +28,6 @@ Casa_*.pdf
 
 # Local email/SMTP secrets — never commit
 .streamlit/secrets.toml
+
+# CRM runtime store (customers + clienteling)
+crm_store.json

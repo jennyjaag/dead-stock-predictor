@@ -100,6 +100,7 @@ query($cursor: String) {
 """
 
 
+@st.cache_data(ttl=900, show_spinner=False)
 def load_products_api():
     prod = {}
     cursor = None
@@ -173,6 +174,7 @@ query($cursor: String, $q: String!) {
 """
 
 
+@st.cache_data(ttl=900, show_spinner=False)
 def load_sales_api(days=365):
     """Sum units sold per product title over the trailing `days`.
 
@@ -206,3 +208,63 @@ def fetch():
     prod = load_products_api()
     sales = load_sales_api()
     return prod, sales
+
+
+# ---------------------------------------------------------------------------
+# customers  ->  CRM records (name, email, phone, orders, spend, last order)
+# ---------------------------------------------------------------------------
+_CUSTOMERS_Q = """
+query($cursor: String) {
+  customers(first: 100, after: $cursor, sortKey: TOTAL_SPENT, reverse: true) {
+    pageInfo { hasNextPage endCursor }
+    edges { node {
+      firstName lastName email phone tags note
+      numberOfOrders amountSpent { amount }
+      lastOrder { createdAt }
+    } }
+  }
+}
+"""
+
+
+@st.cache_data(ttl=900, show_spinner=False)
+def load_customers_api():
+    """Every customer as a CRM-ready dict, biggest spenders first.
+
+    Needs the custom app's `read_customers` scope. If that scope is missing the
+    Shopify API raises, which the caller surfaces as a 'add read_customers' hint.
+    """
+    out = []
+    cursor = None
+    while True:
+        conn = _gql(_CUSTOMERS_Q, {"cursor": cursor})["customers"]
+        for e in conn["edges"]:
+            n = e["node"]
+            name = " ".join(p for p in (n.get("firstName"), n.get("lastName")) if p).strip()
+            spent = 0.0
+            amt = (n.get("amountSpent") or {}).get("amount")
+            if amt not in (None, ""):
+                try:
+                    spent = float(amt)
+                except (ValueError, TypeError):
+                    spent = 0.0
+            try:
+                orders = int(n.get("numberOfOrders") or 0)
+            except (ValueError, TypeError):
+                orders = 0
+            last = (n.get("lastOrder") or {}).get("createdAt")
+            out.append({
+                "name": name or (n.get("email") or "").split("@")[0] or "Customer",
+                "email": (n.get("email") or "").strip(),
+                "phone": (n.get("phone") or "").strip(),
+                "orders": orders,
+                "spent": spent,
+                "last_order": last[:10] if last else "",
+                "tags": [t.strip() for t in (n.get("tags") or []) if t and t.strip()],
+                "source": "shopify",
+            })
+        if conn["pageInfo"]["hasNextPage"]:
+            cursor = conn["pageInfo"]["endCursor"]
+        else:
+            break
+    return out

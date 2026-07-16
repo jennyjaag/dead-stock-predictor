@@ -32,6 +32,9 @@ pages = {
         st.Page("views/p_reorder.py", title="Reorder engine", icon="🔁"),
         st.Page("views/p_swap.py", title="Swap network", icon="🔄"),
     ],
+    "Customers": [
+        st.Page("views/p_crm.py", title="Customer CRM", icon="👥"),
+    ],
     "Retail tools": [
         st.Page("views/p_showrooming.py", title="Showrooming rescue", icon="🛍️"),
         st.Page("views/p_pos.py", title="POS / inventory reconciler", icon="🔧"),

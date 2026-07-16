@@ -26,6 +26,7 @@ COMPANY = "Equine Edge"    # parent — shown as "EquiSphere by Equine Edge" (ea
 TAGLINE = "Dead-stock intelligence for independent tack shops"
 TODAY = date.today()
 SNAP_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cs_snapshots.json")
+CRM_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "crm_store.json")
 DEMO_SALES = "demo_data/demo_sales.csv"
 DEMO_PRODS = "demo_data/demo_products.csv"
 
@@ -276,6 +277,110 @@ def _save_snaps(d):
             json.dump(d, f)
     except Exception:
         pass
+
+
+# ---------------------------------------------------------------------------
+# CRM store — customers + clienteling (horse/discipline/sizes) + follow-ups.
+# Backed by a small local JSON so it survives page reloads within a session.
+# (On a real deployment this would be a database; noted in the CRM page.)
+# ---------------------------------------------------------------------------
+def _load_crm():
+    try:
+        with open(CRM_FILE) as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def _save_crm(d):
+    try:
+        with open(CRM_FILE, "w") as f:
+            json.dump(d, f)
+    except Exception:
+        pass
+
+
+def crm_key(name, email):
+    """Stable id for a contact — email if we have one, else the name."""
+    return (str(email or "").strip().lower() or str(name or "").strip().lower())
+
+
+def crm_all():
+    """All contacts as a list, biggest spenders first."""
+    d = _load_crm()
+    return sorted(d.values(), key=lambda c: c.get("spent", 0) or 0, reverse=True)
+
+
+def crm_get(k):
+    return _load_crm().get(k)
+
+
+def crm_upsert(contact, from_shopify=False):
+    """Insert or update a contact. Shopify sync never clobbers hand-entered
+    clienteling fields (discipline/horse/notes/followups/tags)."""
+    d = _load_crm()
+    k = contact.get("id") or crm_key(contact.get("name"), contact.get("email"))
+    if not k:
+        return None
+    row = d.get(k, {})
+    protected = {"discipline", "horse", "notes", "followups", "tags"} if from_shopify else set()
+    for kk, vv in contact.items():
+        if kk in protected:
+            continue
+        if vv in (None, "") and kk in row:
+            continue  # don't overwrite a real value with a blank
+        row[kk] = vv
+    row["id"] = k
+    row.setdefault("source", "in-store")
+    row.setdefault("followups", [])
+    d[k] = row
+    _save_crm(d)
+    return k
+
+
+def crm_delete(k):
+    d = _load_crm()
+    d.pop(k, None)
+    _save_crm(d)
+
+
+def crm_sync_shopify(customers):
+    """Merge a list of Shopify customer dicts into the CRM. Returns count synced."""
+    n = 0
+    for c in customers:
+        if crm_upsert(c, from_shopify=True):
+            n += 1
+    return n
+
+
+def crm_add_followup(contact_id, item, channel="Email", due=None):
+    d = _load_crm()
+    row = d.get(contact_id)
+    if not row:
+        return
+    row.setdefault("followups", []).append({
+        "item": item, "channel": channel,
+        "due": due or TODAY.isoformat(), "status": "Follow-up due",
+    })
+    _save_crm(d)
+
+
+def crm_set_followup_status(contact_id, idx, status):
+    d = _load_crm()
+    row = d.get(contact_id)
+    if row and 0 <= idx < len(row.get("followups", [])):
+        row["followups"][idx]["status"] = status
+        _save_crm(d)
+
+
+def crm_open_followups():
+    """Every not-yet-recovered follow-up across all contacts, for the queue."""
+    out = []
+    for c in crm_all():
+        for i, f in enumerate(c.get("followups", [])):
+            if f.get("status") != "Recovered":
+                out.append({"contact": c, "idx": i, **f})
+    return out
 
 
 def _email_cfg():
