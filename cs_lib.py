@@ -118,7 +118,8 @@ def sidebar_brand():
             st.rerun()
     if has_data():
         ss = st.session_state
-        src = {"demo": "demo data", "master": "master file", "upload": "two CSVs"}.get(ss["kind"], "—")
+        src = {"demo": "demo data", "master": "master file", "upload": "two CSVs",
+               "shopify": "live Shopify"}.get(ss["kind"], "—")
         st.sidebar.caption("📂 Loaded: {} · {}".format(ss["shop_name"], src))
     st.sidebar.divider()
 

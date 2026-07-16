@@ -3,6 +3,8 @@
 import streamlit as st
 
 import cs_lib
+import shopify_connect as SC
+import shopify_join as SJ
 
 # ---------------------------------------------------------------------------
 # First run — no data yet: show the upload area + demo button right here
@@ -10,7 +12,18 @@ import cs_lib
 if not cs_lib.has_data():
     cs_lib.page_title("Welcome to EquiSphere",
                       "Load your shop's data to see what's turning into dead stock — and what to buy instead.")
-    tab_csv, tab_master = st.tabs(["📄  Two Shopify CSVs", "📊  One master file (xlsx)"])
+    tab_api, tab_csv, tab_master = st.tabs(
+        ["🔌  Connect Shopify (live)", "📄  Two Shopify CSVs", "📊  One master file (xlsx)"])
+    with tab_api:
+        st.markdown("Pull your data **straight from Shopify — no exporting.** Paste your store domain "
+                    "and an Admin API access token.")
+        shop_domain = st.text_input("Store domain", key="shop_domain",
+                                    placeholder="your-store.myshopify.com")
+        shop_token = st.text_input("Admin API access token", key="shop_token", type="password",
+                                   placeholder="shpat_…")
+        connect = st.button("🔌  Connect & pull data", type="primary")
+        st.caption("The token stays in this session only — it isn't saved. Needs a custom app with "
+                   "**read_products, read_inventory, read_orders** scopes.")
     with tab_csv:
         c1, c2 = st.columns(2)
         sales_file = c1.file_uploader("Sales by product (CSV)", type="csv", key="home_sales",
@@ -25,7 +38,13 @@ if not cs_lib.has_data():
     demo = st.button("✨  Try it with demo data")
 
     try:
-        if master_file:
+        if connect and shop_domain and shop_token:
+            with st.spinner("Connecting to Shopify and pulling your products & sales…"):
+                prod, sales = SC.fetch(shop_domain, shop_token)
+                r = SJ.compute(prod, sales)
+            cs_lib.set_data(r, "shopify", (SC._clean_domain(shop_domain), "(live Shopify API)"))
+            st.rerun()
+        elif master_file:
             cs_lib.set_data(cs_lib.compute_from("master", master_file, None), "master",
                             (master_file.name, "(single master file)"))
             st.rerun()
@@ -38,10 +57,10 @@ if not cs_lib.has_data():
                             ("demo_sales.csv", "demo_products.csv"))
             st.rerun()
     except Exception as e:
-        st.error("😕 Couldn't read that file. Please use the Shopify export(s) described above.")
+        st.error("😕 Couldn't load that data. Check the file, or the Shopify domain/token above.")
         st.caption("Detail: {}".format(e))
 
-    st.info("Everything runs on your computer — nothing is uploaded anywhere.")
+    st.info("Everything runs on your computer — nothing is uploaded or stored anywhere.")
     st.stop()
 
 # ---------------------------------------------------------------------------
@@ -77,6 +96,6 @@ with j[2]:
 st.divider()
 if st.button("↻  Load different data"):
     for key in ["data", "kind", "names", "snapshotted", "freed_val",
-                "home_sales", "home_prod", "home_master"]:
+                "home_sales", "home_prod", "home_master", "shop_domain", "shop_token"]:
         st.session_state.pop(key, None)
     st.rerun()
