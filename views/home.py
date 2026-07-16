@@ -1,11 +1,13 @@
-"""Home — landing page: first-run upload/demo prompt, or the dashboard + jump-back-in."""
+"""Home — landing page: first-run upload/demo/live prompt, or the dashboard + jump-back-in."""
 
 import streamlit as st
 
 import cs_lib
+import shopify_join as SJ
+import shopify_api as SA
 
 # ---------------------------------------------------------------------------
-# First run — no data yet: show the upload area + demo button right here
+# First run — no data yet: show the upload area + demo + live-Shopify options
 # ---------------------------------------------------------------------------
 if not cs_lib.has_data():
     cs_lib.page_title("Welcome to EquiSphere",
@@ -24,6 +26,14 @@ if not cs_lib.has_data():
                                             "Date added, Vendor & Product type.")
     demo = st.button("✨  Try it with demo data")
 
+    # Live Shopify — shown only when the [shopify] secret is configured.
+    live = False
+    if SA.configured():
+        st.divider()
+        st.caption("**Live connection** — pull straight from **{}** via the Shopify API, "
+                   "no export needed.".format(SA.store_label()))
+        live = st.button("🔗  Load live from Shopify", type="primary")
+
     try:
         if master_file:
             cs_lib.set_data(cs_lib.compute_from("master", master_file, None), "master",
@@ -37,11 +47,22 @@ if not cs_lib.has_data():
             cs_lib.set_data(cs_lib.compute_from("demo", cs_lib.DEMO_SALES, cs_lib.DEMO_PRODS), "demo",
                             ("demo_sales.csv", "demo_products.csv"))
             st.rerun()
+        elif live:
+            with st.spinner("Connecting to Shopify and reading products & sales…"):
+                prod, sales = SA.fetch()
+            if not prod:
+                st.success("✅ Connected to {} — but this store has no products yet. "
+                           "Add products (or point the connection at a store with inventory) "
+                           "and click again.".format(SA.store_label()))
+                st.stop()
+            cs_lib.set_data(SJ.compute(prod, sales), "shopify", (SA.store_label(), "live Shopify API"))
+            st.rerun()
     except Exception as e:
-        st.error("😕 Couldn't read that file. Please use the Shopify export(s) described above.")
+        st.error("😕 Couldn't load that data. For CSV mode use the Shopify export(s) described above; "
+                 "for live mode check the [shopify] secrets.")
         st.caption("Detail: {}".format(e))
 
-    st.info("Everything runs on your computer — nothing is uploaded anywhere.")
+    st.info("Uploaded files are processed in memory and never stored. Live mode reads directly from Shopify.")
     st.stop()
 
 # ---------------------------------------------------------------------------
