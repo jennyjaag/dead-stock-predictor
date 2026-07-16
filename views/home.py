@@ -12,22 +12,19 @@ import shopify_api as SA
 # ---------------------------------------------------------------------------
 if not cs_lib.has_data():
 
-    # Auto-load LIVE Shopify stock on first visit when a connection is configured,
-    # so a logged-in user lands straight on their live stock dashboard.
-    if SA.configured() and not st.session_state.get("_live_autoload_done"):
-        st.session_state["_live_autoload_done"] = True
-        try:
-            with cs_lib.horse_loading("Cantering off to fetch your live Shopify stock…"):
-                prod, sales = SA.fetch()
-            if prod:
-                cs_lib.set_data(SJ.compute(prod, sales), "shopify",
-                                (SA.store_label(), "live Shopify API"))
-                st.rerun()
-        except Exception:
-            pass  # fall through to the manual chooser below
-
     cs_lib.page_title("Welcome to EquiSphere",
                       "Load your shop's data to see what's turning into dead stock — and what to buy instead.")
+
+    # One-click live pull, front and centre when Shopify is connected.
+    # (No auto-download on login — that's what made logging in feel slow.)
+    live = False
+    if SA.configured():
+        st.markdown("#### 🐎  Your Shopify store is connected")
+        st.caption("Pull straight from **{}** — no exporting needed.".format(SA.store_label()))
+        live = st.button("🐎  Load my live Shopify data", type="primary", use_container_width=True)
+        st.divider()
+        st.caption("Or use another source:")
+
     tab_api, tab_csv, tab_master = st.tabs(
         ["🔌  Connect Shopify (live)", "📄  Two Shopify CSVs", "📊  One master file (xlsx)"])
     with tab_api:
@@ -52,14 +49,6 @@ if not cs_lib.has_data():
                                        help="One sheet with stock, cost, 30/90/12-month + prior-year sales, "
                                             "Date added, Vendor & Product type.")
     demo = st.button("✨  Try it with demo data")
-
-    # Live Shopify — shown only when the [shopify] secret is configured.
-    live = False
-    if SA.configured():
-        st.divider()
-        st.caption("**Live connection** — pull straight from **{}** via the Shopify API, "
-                   "no export needed.".format(SA.store_label()))
-        live = st.button("🔗  Load live from Shopify", type="primary")
 
     try:
         if connect and shop_domain and shop_token:
