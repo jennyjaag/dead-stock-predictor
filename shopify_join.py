@@ -26,6 +26,7 @@ import io
 import os
 import re
 import sys
+from datetime import date
 
 import casa_report as C   # reuse constants + money/fmt_cover/esc/colour
 
@@ -33,6 +34,11 @@ import casa_report as C   # reuse constants + money/fmt_cover/esc/colour
 W_COVER, W_SALES, W_CASH = 0.40, 0.40, 0.20
 PERIOD_MONTHS = 12         # the sales window is trailing 12 months
 ASOF = "2026-07-14"
+# A product in stock for fewer than this many weeks hasn't had a fair chance to
+# sell, so it's "too new to judge" — never counted as dead stock. Tunable in Settings.
+GRACE_WEEKS = 8
+# Product types held back from the at-risk list (out-of-season stock isn't dead).
+SEASONAL_TYPES = []
 
 
 def norm(s):
@@ -133,7 +139,7 @@ def avg(xs):
 # SCORE
 # ===========================================================================
 
-def score(p, units12, max_inv):
+def score(p, units12, max_inv, is_new=False, is_seasonal=False):
     stock = p["stock"]
     cost = avg(p["costs"])
     price = avg(p["prices"])
@@ -165,7 +171,12 @@ def score(p, units12, max_inv):
 
     risk = round(W_COVER * cover_sub + W_SALES * sales_sub + W_CASH * cash_sub)
 
-    if stock <= 0:
+    if is_new:
+        # Too recently added to have had a fair chance to sell — never "dead".
+        action, risk = "New — too early to tell", min(risk, 18)
+    elif is_seasonal:
+        action = "Seasonal — hold"
+    elif stock <= 0:
         action = "Reorder" if units12 > 0 else "Sold out"
     elif units12 > 0 and 0 < cover <= C.REORDER_COVER_M:
         action = "Reorder"
@@ -180,7 +191,8 @@ def score(p, units12, max_inv):
             "status": p["status"], "stock": stock, "u12": units12, "cover": cover,
             "u30": None, "u90": None, "py12": None,   # single-window export: no recent/prior data
             "cost": cost, "price": price, "margin": margin, "cash": cash,
-            "risk": risk, "action": action, "variants": p.get("variants", [])}
+            "risk": risk, "action": action, "is_new": is_new, "is_seasonal": is_seasonal,
+            "variants": p.get("variants", [])}
 
 
 # ===========================================================================
@@ -207,13 +219,29 @@ def compute(prod, sales):
     max_inv = max((p["stock"] * avg(p["costs"]) for p in active
                    if avg(p["costs"]) and p["stock"] > 0), default=1.0)
 
-    scored = [score(p, sales.get(norm(p["title"]), 0), max_inv) for p in active]
+    grace_days = GRACE_WEEKS * 7
+    seasonal = set(SEASONAL_TYPES or [])
+    today = date.today()
+
+    def _is_new(p):
+        a = p.get("added")
+        return bool(a) and (today - a).days < grace_days
+
+    scored = []
+    for p in active:
+        is_new = _is_new(p)
+        is_seasonal = (p.get("type") or "") in seasonal
+        scored.append(score(p, sales.get(norm(p["title"]), 0), max_inv, is_new, is_seasonal))
     scored.sort(key=lambda x: x["risk"], reverse=True)
 
     in_stock = [x for x in scored if x["stock"] > 0]
-    at_risk = [x for x in in_stock if x["risk"] >= C.AT_RISK_SCORE]
+    # "New" and "seasonal" stock is held back — never counted as at-risk / dead.
+    judged = [x for x in in_stock if not x["is_new"] and not x["is_seasonal"]]
+    too_new = [x for x in in_stock if x["is_new"]]
+    seasonal_held = [x for x in in_stock if x["is_seasonal"] and not x["is_new"]]
+    at_risk = [x for x in judged if x["risk"] >= C.AT_RISK_SCORE]
     cash_at_risk = sum(x["cash"] for x in at_risk if x["cash"])
-    dead = [x for x in in_stock if x["u12"] == 0]
+    dead = [x for x in judged if x["u12"] == 0]
     dead_cash = sum(x["cash"] for x in dead if x["cash"])
     total_inv = sum(x["cash"] for x in in_stock if x["cash"])
 
@@ -240,7 +268,14 @@ def compute(prod, sales):
         ("Vendor name duplicate: 'Animo' vs 'animo'", "info",
          "A capitalisation mismatch splits one brand into two. Merged (case-insensitively) in the by-brand rollup below; "
          "worth fixing in Shopify so future reports are clean."),
+        ("{} products held back as 'too new to judge'".format(len(too_new)), "info",
+         "Added less than {} weeks ago — not enough time to have sold, so they're NOT counted as dead stock. "
+         "Change the grace period in Settings.".format(GRACE_WEEKS)) if too_new else None,
+        ("{} products held back as seasonal".format(len(seasonal_held)), "info",
+         "Their product type is marked seasonal in Settings, so out-of-season slowness isn't treated as dead.")
+        if seasonal_held else None,
     ]
+    flags = [f for f in flags if f]
 
     vend = {}
     for x in at_risk:
@@ -259,6 +294,7 @@ def compute(prod, sales):
         "match_count": match_count, "sales_count": len(sales),
         "missing_cost": missing_cost_in_stock, "drafts_in_stock": drafts_in_stock,
         "archived_in_stock": archived_in_stock, "negatives": negatives,
+        "too_new": too_new, "seasonal_held": seasonal_held,
     }
 
 

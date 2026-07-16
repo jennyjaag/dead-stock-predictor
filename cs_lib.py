@@ -41,7 +41,8 @@ def init_state():
     ss.setdefault("min_cash", 0)
     ss.setdefault("variant_view", False)
     ss.setdefault("lead_time_weeks", 4)
-    ss.setdefault("grace_days", 90)
+    ss.setdefault("grace_weeks", 8)          # new stock younger than this isn't "dead"
+    ss.setdefault("seasonal_types", [])      # product types held back from the red list
     ss.setdefault("data", None)
     ss.setdefault("kind", None)
     ss.setdefault("names", None)
@@ -63,7 +64,10 @@ def init_state():
         ss["threads_seeded"] = True
     # push settings into the engine modules (used on the next data load)
     C.CURRENCY = ss["currency"]
-    ML.NEW_DAYS = int(ss["grace_days"])
+    SJ.GRACE_WEEKS = int(ss["grace_weeks"])
+    SJ.SEASONAL_TYPES = list(ss["seasonal_types"])
+    ML.NEW_DAYS = int(ss["grace_weeks"]) * 7
+    ML.SEASONAL_TYPES = list(ss["seasonal_types"])
 
 
 def add_message(store, text, sender="you"):
@@ -153,7 +157,10 @@ def money(v):
 
 
 def cover_txt(c):
-    return "∞" if c == float("inf") else "{:.0f} mo".format(c)
+    # never render a raw ∞ — zero-sales items would divide by zero
+    if c is None or c == float("inf") or c > 600:
+        return "no recent sales"
+    return "{:.0f} mo".format(c)
 
 
 def badge_level(risk):
@@ -167,6 +174,8 @@ def badge_level(risk):
 def recommend(x):
     if x.get("action") == "New — too early to tell":
         return "New — too early to tell", "watch"
+    if x.get("action") == "Seasonal — hold":
+        return "Seasonal — hold (out of season)", "—"
     if x["action"] == "Reorder":
         return "Reorder — selling fast", "Now"
     if x["action"] == "Sold out":
@@ -380,8 +389,8 @@ def render_deadstock(r):
             money(r["cash_at_risk"]), shop, r["at_risk_count"], TODAY.strftime("%d %b %Y")),
         unsafe_allow_html=True)
 
-    finite = [x["cover"] for x in r["at_risk"] if x["cover"] != float("inf")]
-    avg_cov = "{:.0f} mo".format(sum(finite) / len(finite)) if finite else "∞"
+    finite = [x["cover"] for x in r["at_risk"] if x["cover"] != float("inf") and x["cover"] <= 600]
+    avg_cov = "{:.0f} mo".format(sum(finite) / len(finite)) if finite else "no recent sales"
     k1, k2, k3, k4 = st.columns(4)
     k1.metric("Cash at risk", money(r["cash_at_risk"]))
     k2.metric("Dead / at-risk items", r["at_risk_count"], "{} never sold".format(r["dead_count"]), delta_color="off")

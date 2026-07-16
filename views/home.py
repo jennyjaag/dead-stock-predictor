@@ -70,7 +70,7 @@ ss = st.session_state
 r = cs_lib.get_r()
 
 cs_lib.page_title("Welcome back",
-                  "Here's where **{}** stands. Pick a tool on the left, or jump back in below.".format(ss["shop_name"]))
+                  "Here's where <b>{}</b> stands. Pick a tool on the left, or jump back in below.".format(ss["shop_name"]))
 
 freed = cs_lib.freed_since_last_visit(ss["shop_name"], r["cash_at_risk"])
 k = st.columns(3)

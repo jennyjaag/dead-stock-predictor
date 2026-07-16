@@ -23,14 +23,24 @@ st.checkbox("Break down by size / colour (per variant)", key="variant_view",
             help="Needs the two-CSV upload; the master file is product-level.")
 
 st.divider()
+st.subheader("Dead-stock accuracy — stop crying wolf")
+st.number_input("Grace period for new stock (weeks)", min_value=0, max_value=52, step=1, key="grace_weeks",
+                help="A product in stock for fewer than this many weeks hasn't had a fair chance to sell, "
+                     "so it's held back as 'too new to judge' — never counted as dead stock. Default 8.")
+seasonal_input = st.text_input(
+    "Seasonal product types to hold back (comma-separated)",
+    value=", ".join(st.session_state.get("seasonal_types", [])),
+    help="e.g. Rugs, Fly Control — out-of-season slowness in these types won't be flagged as dead.")
+st.session_state["seasonal_types"] = [s.strip() for s in seasonal_input.split(",") if s.strip()]
+
+st.divider()
 st.subheader("Buying assumptions — reorder & buy AI")
 st.number_input("Supplier lead time (weeks)", min_value=0, max_value=52, step=1, key="lead_time_weeks",
                 help="How far ahead to place orders. Shown on the Reorder engine.")
-st.number_input("New-arrival grace period (days)", min_value=0, max_value=365, step=15, key="grace_days",
-                help="A product added within this many days with no sales is 'too early to tell', not dead.")
 
-st.caption("Shop name, currency and filters apply immediately. The grace period applies the next time you "
-           "load data (Home → Load different data, then re-open your file).")
+st.caption("Shop name, currency, filters and grace period apply the next time you load data "
+           "(re-connect / re-upload). Product **age** for the grace period comes from Shopify (live connect "
+           "or the master file); the two-CSV export doesn't include product dates.")
 
 if cs_lib.has_data():
     st.page_link("views/home.py", label="← Back to Home", icon="🏠")

@@ -54,7 +54,7 @@ query($cursor: String) {
   products(first: 50, after: $cursor) {
     pageInfo { hasNextPage endCursor }
     nodes {
-      handle title vendor productType status isGiftCard
+      handle title vendor productType status isGiftCard createdAt publishedAt
       variants(first: 100) {
         nodes {
           sku inventoryQuantity price
@@ -73,9 +73,19 @@ def _fetch_products(shop, token):
     while True:
         conn = _graphql(shop, token, _PRODUCTS_Q, {"cursor": cursor})["products"]
         for n in conn["nodes"]:
+            # product age: when it became available (published), else when created
+            added = None
+            for fld in ("publishedAt", "createdAt"):
+                v = n.get(fld)
+                if v:
+                    try:
+                        added = date.fromisoformat(v[:10])
+                        break
+                    except ValueError:
+                        pass
             p = {"title": n["title"], "vendor": n.get("vendor") or "",
                  "type": n.get("productType") or "", "status": (n.get("status") or "").lower(),
-                 "giftcard": bool(n.get("isGiftCard")), "stock": 0,
+                 "giftcard": bool(n.get("isGiftCard")), "stock": 0, "added": added,
                  "costs": [], "prices": [], "variants": []}
             for v in n["variants"]["nodes"]:
                 qty = v.get("inventoryQuantity") or 0

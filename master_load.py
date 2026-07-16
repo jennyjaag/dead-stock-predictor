@@ -21,6 +21,7 @@ import openpyxl
 import casa_report as C
 
 NEW_DAYS = 90        # added within this many days + no sales = "new", not dead
+SEASONAL_TYPES = []  # product types held back from the at-risk list (out-of-season isn't dead)
 # risk weights (adds a real trend term the two-CSV path couldn't)
 W_COVER, W_RECENCY, W_CASH, W_TREND = 0.35, 0.30, 0.20, 0.15
 ASOF = date(2026, 7, 15)
@@ -91,9 +92,11 @@ def load_master(src):
 
     in_stock = scored
     new_arrivals = [x for x in scored if x["is_new"]]
-    at_risk = [x for x in in_stock if x["risk"] >= C.AT_RISK_SCORE and not x["is_new"]]
-    dead = [x for x in in_stock if x["u12"] == 0 and not x["is_new"]]
-    declining = [x for x in in_stock if x["u12"] > 0 and x["py12"] > x["u12"]]
+    seasonal_held = [x for x in scored if x.get("is_seasonal") and not x["is_new"]]
+    judged = [x for x in in_stock if not x["is_new"] and not x.get("is_seasonal")]
+    at_risk = [x for x in judged if x["risk"] >= C.AT_RISK_SCORE]
+    dead = [x for x in judged if x["u12"] == 0]
+    declining = [x for x in judged if x["u12"] > 0 and x["py12"] > x["u12"]]
 
     cash_at_risk = sum(x["cash"] for x in at_risk if x["cash"])
     dead_cash = sum(x["cash"] for x in dead if x["cash"])
@@ -140,6 +143,7 @@ def load_master(src):
         "flags": flags, "vend_sorted": vend_sorted, "todo": todo,
         "match_count": len(in_stock), "sales_count": len(in_stock),
         "new_arrivals": new_arrivals, "declining": declining,
+        "too_new": new_arrivals, "seasonal_held": seasonal_held,
     }
 
 
@@ -147,6 +151,7 @@ def _score(x, max_inv):
     stock, u12, u30, u90, py12 = x["stock"], x["u12"], x["u30"], x["u90"], x["py12"]
     cash = x["cash"]
     is_new = bool(x["added"]) and (ASOF - x["added"].date()).days <= NEW_DAYS and u12 == 0
+    is_seasonal = (x.get("ptype") or "") in SEASONAL_TYPES
 
     monthly = u12 / 12.0
     cover = float("inf") if (stock > 0 and monthly == 0) else (stock / monthly if monthly else 0.0)
@@ -174,6 +179,8 @@ def _score(x, max_inv):
 
     if is_new:
         action, risk = "New — too early to tell", min(risk, 18)
+    elif is_seasonal:
+        action = "Seasonal — hold"
     elif u12 > 0 and 0 < cover <= C.REORDER_COVER_M:
         action = "Reorder"
     elif risk >= C.MARKDOWN_SCORE:
@@ -187,7 +194,7 @@ def _score(x, max_inv):
     return {"title": x["title"], "vendor": x.get("vendor", ""), "type": x.get("ptype", "Uncategorised"),
             "status": x["status"], "stock": stock, "u30": u30, "u90": u90, "u12": u12, "py12": py12,
             "cover": cover, "cost": cost, "price": price, "margin": None, "cash": cash,
-            "risk": risk, "action": action, "is_new": is_new, "variants": []}
+            "risk": risk, "action": action, "is_new": is_new, "is_seasonal": is_seasonal, "variants": []}
 
 
 if __name__ == "__main__":
