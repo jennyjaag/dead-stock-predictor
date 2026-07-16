@@ -1,15 +1,31 @@
-"""Home — landing page: first-run upload/demo prompt, or the dashboard + jump-back-in."""
+"""Home — landing page: first-run auto-load/upload/demo/live prompt, or the dashboard."""
 
 import streamlit as st
 
 import cs_lib
 import shopify_connect as SC
 import shopify_join as SJ
+import shopify_api as SA
 
 # ---------------------------------------------------------------------------
-# First run — no data yet: show the upload area + demo button right here
+# First run — no data yet
 # ---------------------------------------------------------------------------
 if not cs_lib.has_data():
+
+    # Auto-load LIVE Shopify stock on first visit when a connection is configured,
+    # so a logged-in user lands straight on their live stock dashboard.
+    if SA.configured() and not st.session_state.get("_live_autoload_done"):
+        st.session_state["_live_autoload_done"] = True
+        try:
+            with st.spinner("Loading your live Shopify stock…"):
+                prod, sales = SA.fetch()
+            if prod:
+                cs_lib.set_data(SJ.compute(prod, sales), "shopify",
+                                (SA.store_label(), "live Shopify API"))
+                st.rerun()
+        except Exception:
+            pass  # fall through to the manual chooser below
+
     cs_lib.page_title("Welcome to EquiSphere",
                       "Load your shop's data to see what's turning into dead stock — and what to buy instead.")
     tab_api, tab_csv, tab_master = st.tabs(
@@ -37,6 +53,14 @@ if not cs_lib.has_data():
                                             "Date added, Vendor & Product type.")
     demo = st.button("✨  Try it with demo data")
 
+    # Live Shopify — shown only when the [shopify] secret is configured.
+    live = False
+    if SA.configured():
+        st.divider()
+        st.caption("**Live connection** — pull straight from **{}** via the Shopify API, "
+                   "no export needed.".format(SA.store_label()))
+        live = st.button("🔗  Load live from Shopify", type="primary")
+
     try:
         if connect and shop_domain and shop_token:
             with st.spinner("Connecting to Shopify and pulling your products & sales…"):
@@ -56,11 +80,22 @@ if not cs_lib.has_data():
             cs_lib.set_data(cs_lib.compute_from("demo", cs_lib.DEMO_SALES, cs_lib.DEMO_PRODS), "demo",
                             ("demo_sales.csv", "demo_products.csv"))
             st.rerun()
+        elif live:
+            with st.spinner("Connecting to Shopify and reading products & sales…"):
+                prod, sales = SA.fetch()
+            if not prod:
+                st.success("✅ Connected to {} — but this store has no products yet. "
+                           "Add products (or point the connection at a store with inventory) "
+                           "and click again.".format(SA.store_label()))
+                st.stop()
+            cs_lib.set_data(SJ.compute(prod, sales), "shopify", (SA.store_label(), "live Shopify API"))
+            st.rerun()
     except Exception as e:
-        st.error("😕 Couldn't load that data. Check the file, or the Shopify domain/token above.")
+        st.error("😕 Couldn't load that data. Check the Shopify domain/token above (or the [shopify] "
+                 "secrets for live mode), or the file described above.")
         st.caption("Detail: {}".format(e))
 
-    st.info("Everything runs on your computer — nothing is uploaded or stored anywhere.")
+    st.info("Uploaded files are processed in memory and never stored. Live mode reads directly from Shopify.")
     st.stop()
 
 # ---------------------------------------------------------------------------
@@ -95,7 +130,7 @@ with j[2]:
 
 st.divider()
 if st.button("↻  Load different data"):
-    for key in ["data", "kind", "names", "snapshotted", "freed_val",
-                "home_sales", "home_prod", "home_master", "shop_domain", "shop_token"]:
+    for key in ["data", "kind", "names", "snapshotted", "freed_val", "home_sales", "home_prod",
+                "home_master", "shop_domain", "shop_token", "_live_autoload_done"]:
         st.session_state.pop(key, None)
     st.rerun()
