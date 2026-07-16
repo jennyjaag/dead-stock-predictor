@@ -345,6 +345,49 @@ def _hl(v):
     return "background-color:#e9e7df;color:#6b7268;font-weight:700"       # healthy (neutral grey)
 
 
+_SHEET = """<!DOCTYPE html><html><head><meta charset="utf-8"><title>Dead-stock action sheet</title>
+<style>
+  @page {{ size:A4; margin:14mm; }}
+  * {{ -webkit-print-color-adjust:exact; print-color-adjust:exact; box-sizing:border-box; }}
+  body {{ font-family:-apple-system,Arial,sans-serif; color:#16241f; font-size:12px; margin:0; }}
+  h1 {{ font-size:19px; margin:0 0 2px; }}
+  .sub {{ color:#5a6b5e; font-size:11px; margin-bottom:12px; }}
+  .tot {{ background:#1F5A43; color:#fff; padding:8px 12px; border-radius:8px; display:inline-block; font-weight:700; margin-bottom:14px; }}
+  table {{ width:100%; border-collapse:collapse; }}
+  th {{ text-align:left; font-size:9px; text-transform:uppercase; letter-spacing:.04em; color:#5a6b5e; border-bottom:1.5px solid #16241f; padding:5px; }}
+  td {{ padding:8px 5px; border-bottom:0.5px solid #d9d5c8; vertical-align:top; }}
+  tr {{ page-break-inside:avoid; }}
+  td.p {{ font-weight:600; }} td.p .w {{ display:block; font-weight:400; color:#5a6b5e; font-size:10px; margin-top:2px; }}
+  td.a {{ font-weight:600; white-space:nowrap; }} td.a .d {{ display:block; font-weight:400; color:#8a6100; font-size:10px; }}
+  td.n {{ text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }}
+  .box {{ display:inline-block; width:15px; height:15px; border:1.5px solid #16241f; border-radius:3px; }}
+  .foot {{ margin-top:12px; font-size:9px; color:#9a9686; }}
+  @media print {{ .noprint {{ display:none; }} }}
+</style></head><body>
+  <button class="noprint" onclick="window.print()" style="float:right;padding:8px 16px;border-radius:8px;border:1px solid #1F5A43;background:#1F5A43;color:#fff;font-weight:700;cursor:pointer">🖨️ Print</button>
+  <h1>Dead-stock action sheet</h1>
+  <div class="sub">{shop} &middot; {date} &middot; {count} items to act on</div>
+  <div class="tot">💰 {total} of cash frozen in these items</div>
+  <table><thead><tr><th>Done</th><th>Product &amp; why</th><th>Action</th><th class="n">Cash</th></tr></thead>
+  <tbody>{rows}</tbody></table>
+  <div class="foot">EquiSphere by Equine Edge &middot; tick each item as you mark it down or clear it.</div>
+</body></html>"""
+
+
+def action_sheet_html(items, shop):
+    rows = ""
+    for x in items:
+        act, when = recommend(x)
+        rows += ("<tr><td><span class='box'></span></td>"
+                 "<td class='p'>{p}<span class='w'>{w}</span></td>"
+                 "<td class='a'>{a}{d}</td><td class='n'>{c}</td></tr>").format(
+            p=C.esc(x["title"]), w=C.esc(why(x)), a=C.esc(act),
+            d=("<span class='d'>by {}</span>".format(when) if when not in ("—", "watch", "Now") else ""),
+            c=money(x["cash"]) if x["cash"] is not None else "—")
+    return _SHEET.format(shop=C.esc(shop), date=TODAY.strftime("%d %b %Y"), count=len(items),
+                         total=money(sum(x["cash"] for x in items if x["cash"])), rows=rows)
+
+
 def _export_and_share(df, shop):
     """Download (CSV/Excel) and email the filtered product list."""
     if df is None or not len(df):
@@ -393,9 +436,21 @@ def render_deadstock(r):
     avg_cov = "{:.0f} mo".format(sum(finite) / len(finite)) if finite else "no recent sales"
     k1, k2, k3, k4 = st.columns(4)
     k1.metric("Cash at risk", money(r["cash_at_risk"]))
-    k2.metric("Dead / at-risk items", r["at_risk_count"], "{} never sold".format(r["dead_count"]), delta_color="off")
+    k2.metric("Dead / at-risk items", r["at_risk_count"],
+              "{} genuinely dead".format(r["dead_count"]), delta_color="off")
     k3.metric("Avg. cover (at-risk)", avg_cov)
     k4.metric("Free up (top 10)", money(free_top10))
+
+    freed = freed_since_last_visit(shop, r["cash_at_risk"])
+    if freed and abs(freed) >= 1:
+        if freed > 0:
+            st.caption("📉  **{}** of dead-stock cash freed since your last visit — nice work.".format(money(freed)))
+        else:
+            st.caption("📈  **{}** more cash frozen since your last visit.".format(money(abs(freed))))
+    held = len(r.get("too_new", [])) + len(r.get("seasonal_held", []))
+    if held:
+        st.caption("🛡️  {} products held back (too new or seasonal) and **not** counted as dead — "
+                   "tune the grace period in Settings.".format(held))
 
     # ---- Filter panel — everything to slice the report lives here ----
     cats = sorted({x["type"] for x in r["in_stock"] if x["type"] and x["type"] != "Uncategorised"})
@@ -499,6 +554,13 @@ def render_deadstock(r):
                     "<th>Product &amp; why</th><th>Risk</th><th class='num'>Cash tied up</th>"
                     "<th>Recommended action</th></tr></thead><tbody>{}</tbody></table></div>".format(rows),
                     unsafe_allow_html=True)
+        at_risk_shown = [x for x in shown if x["risk"] >= C.AT_RISK_SCORE]
+        st.download_button(
+            "🖨️  Printable action sheet (walk the floor)",
+            data=action_sheet_html(at_risk_shown, shop),
+            file_name="{}_action_sheet.html".format(shop.replace(" ", "_")),
+            mime="text/html",
+            help="A clean checklist with tick-boxes, action and date — open it and print (or save as PDF).")
     else:
         st.success("Nothing above the risk threshold — inventory looks healthy. 🎉")
 
@@ -558,7 +620,8 @@ def render_deadstock(r):
                 "Product": x["title"], "Brand": x["vendor"], "Type": x["type"], "Risk": x["risk"],
                 "Stock": int(x["stock"]), "Cover": cover_txt(x["cover"]), "Sold/yr": int(x["u12"]),
                 "Cash @cost ($)": None if x["cash"] is None else round(x["cash"]),
-                "Action": recommend(x)[0], "Status": x["status"]} for x in shown])
+                "Recommended action": recommend(x)[0], "By when": recommend(x)[1],
+                "Why": why(x), "Status": x["status"]} for x in shown])
             export_df = df
             if len(df):
                 st.dataframe(df.style.map(_hl, subset=["Risk"]), use_container_width=True,
