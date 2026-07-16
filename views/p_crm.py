@@ -64,6 +64,21 @@ k[2].metric("Repeat buyers", repeat, "{}%".format(round(100 * repeat / len(conta
 
 st.divider()
 
+# Purchase history + clear-out targeting need recent orders — pulled on demand.
+orders = st.session_state.get("crm_orders")
+if SA.configured():
+    lc = st.columns([1, 3])
+    if lc[0].button("📦  Load purchase history", use_container_width=True):
+        try:
+            with st.spinner("Reading recent orders…"):
+                st.session_state["crm_orders"] = SA.load_orders_detailed()
+            orders = st.session_state["crm_orders"]
+            st.success("Loaded {} recent orders.".format(len(orders)))
+        except Exception as e:
+            st.error("Couldn't read orders: {}".format(e))
+    lc[1].caption("Adds each customer's recent purchases and powers clear-out targeting "
+                  "(last ~60 days of orders).")
+
 # ---------------------------------------------------------------------------
 # Customer list (searchable) + pick one to open
 # ---------------------------------------------------------------------------
@@ -97,7 +112,9 @@ with right:
         cid = names[pick]
         c = cs_lib.crm_get(cid)
         st.subheader(c.get("name", "Customer"))
-        st.caption("{}  ·  {}".format(c.get("email", "") or "no email", c.get("phone", "") or "no phone"))
+        st.caption("{}  ·  {}{}".format(
+            c.get("email", "") or "no email", c.get("phone", "") or "no phone",
+            "  ·  📍 " + c["location"] if c.get("location") else ""))
         b = st.columns(3)
         b[0].metric("Orders", c.get("orders", 0))
         b[1].metric("Spent", cs_lib.money(c.get("spent", 0) or 0))
@@ -131,9 +148,51 @@ with right:
             if st.form_submit_button("➕  Schedule follow-up") and fi:
                 cs_lib.crm_add_followup(cid, fi, ch)
                 st.rerun()
+
+        if orders is not None:
+            hist = cs_lib.customer_purchases(c.get("email", ""), orders)
+            st.markdown("**Recent purchases**")
+            if hist:
+                st.dataframe(pd.DataFrame([{"Date": h["date"], "Item": h["title"], "Qty": h["qty"]}
+                                          for h in hist]), hide_index=True, use_container_width=True, height=160)
+            else:
+                st.caption("No orders on record in the last ~60 days.")
+
+        if c.get("email"):
+            with st.expander("✉️  Email this customer"):
+                first = (c.get("name", "") or "there").split(" ")[0]
+                subj = st.text_input("Subject",
+                                     value="A note from {}".format(st.session_state.get("shop_name", "us")),
+                                     key="subj_" + cid)
+                body = st.text_area("Message", value="Hi {},\n\n".format(first), height=120, key="body_" + cid)
+                if st.button("Send email", type="primary", key="send_" + cid):
+                    if cs_lib.email_configured():
+                        ok, msg = cs_lib.send_email(c["email"], subj, body)
+                        (st.success if ok else st.error)(msg)
+                    else:
+                        st.warning("Email sending isn't set up yet — add SMTP settings in the app secrets "
+                                   "and you'll be able to send follow-ups straight from here.")
     else:
         st.info("Pick a customer on the left to open their card — add their horse, discipline, sizes and "
                 "schedule a follow-up.")
+
+st.divider()
+st.subheader("🎯  Clear-out targeting")
+st.caption("Match your dead stock to the customers who already bought it — offer them a deal to clear it fast.")
+if not cs_lib.has_data():
+    st.info("Load your shop's stock data on the **Home** page first, so EquiSphere knows what's slow-moving.")
+elif orders is None:
+    st.info("Click **📦 Load purchase history** above to see who to target.")
+else:
+    r = cs_lib.get_r()
+    targets = cs_lib.clearout_targets(r.get("at_risk", []), orders)
+    if not targets:
+        st.caption("No past buyers found for your current at-risk items (within the last ~60 days of orders).")
+    else:
+        for title, buyers in list(targets.items())[:20]:
+            with st.expander("{}  —  {} past buyer(s)".format(title, len(buyers))):
+                for nm, em in buyers:
+                    st.write("• {} — {}".format(nm or "—", em or "no email"))
 
 st.caption("Customers sync from Shopify; the horse/discipline/sizes and follow-ups you add are stored with "
            "EquiSphere. (For a large shop this moves to a hosted database — this version keeps it simple.)")

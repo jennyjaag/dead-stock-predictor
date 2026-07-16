@@ -221,6 +221,7 @@ query($cursor: String) {
       firstName lastName email phone tags note
       numberOfOrders amountSpent { amount }
       lastOrder { createdAt }
+      defaultAddress { city province country }
     } }
   }
 }
@@ -253,15 +254,64 @@ def load_customers_api():
             except (ValueError, TypeError):
                 orders = 0
             last = (n.get("lastOrder") or {}).get("createdAt")
+            adr = n.get("defaultAddress") or {}
+            location = ", ".join(p for p in (adr.get("city"), adr.get("province"), adr.get("country")) if p)
             out.append({
                 "name": name or (n.get("email") or "").split("@")[0] or "Customer",
                 "email": (n.get("email") or "").strip(),
                 "phone": (n.get("phone") or "").strip(),
+                "location": location,
                 "orders": orders,
                 "spent": spent,
                 "last_order": last[:10] if last else "",
                 "tags": [t.strip() for t in (n.get("tags") or []) if t and t.strip()],
                 "source": "shopify",
+            })
+        if conn["pageInfo"]["hasNextPage"]:
+            cursor = conn["pageInfo"]["endCursor"]
+        else:
+            break
+    return out
+
+
+# ---------------------------------------------------------------------------
+# detailed orders  ->  who bought what (purchase history + dead-stock targeting)
+# ---------------------------------------------------------------------------
+_ORDERS_DETAIL_Q = """
+query($cursor: String, $q: String!) {
+  orders(first: 30, after: $cursor, query: $q, sortKey: CREATED_AT, reverse: true) {
+    pageInfo { hasNextPage endCursor }
+    edges { node {
+      createdAt
+      customer { email firstName lastName }
+      lineItems(first: 50) { edges { node { title quantity } } }
+    } }
+  }
+}
+"""
+
+
+@st.cache_data(ttl=900, show_spinner=False)
+def load_orders_detailed(days=365):
+    """Recent orders with customer email + line items — for per-customer purchase
+    history and dead-stock clear-out targeting. Same 60-day scope caveat as sales."""
+    since = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%d")
+    q = "created_at:>={}".format(since)
+    out = []
+    cursor = None
+    while True:
+        conn = _gql(_ORDERS_DETAIL_Q, {"cursor": cursor, "q": q})["orders"]
+        for e in conn["edges"]:
+            n = e["node"]
+            cust = n.get("customer") or {}
+            nm = " ".join(p for p in (cust.get("firstName"), cust.get("lastName")) if p).strip()
+            items = [{"title": le["node"].get("title", ""), "qty": le["node"].get("quantity") or 0}
+                     for le in n["lineItems"]["edges"] if le["node"].get("title")]
+            out.append({
+                "email": (cust.get("email") or "").strip(),
+                "name": nm,
+                "date": (n.get("createdAt") or "")[:10],
+                "items": items,
             })
         if conn["pageInfo"]["hasNextPage"]:
             cursor = conn["pageInfo"]["endCursor"]

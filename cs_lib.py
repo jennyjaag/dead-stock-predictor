@@ -373,6 +373,39 @@ def crm_set_followup_status(contact_id, idx, status):
         _save_crm(d)
 
 
+def customer_purchases(email, orders):
+    """Line items this customer has bought, most recent first."""
+    e = str(email or "").strip().lower()
+    if not e:
+        return []
+    hist = []
+    for o in orders:
+        if str(o.get("email", "")).strip().lower() == e:
+            for it in o.get("items", []):
+                hist.append({"date": o.get("date", ""), **it})
+    return hist
+
+
+def clearout_targets(atrisk_items, orders):
+    """Map each at-risk product -> the customers who bought it before, so you can
+    offer them a clear-out deal. Returns {product_title: [(name, email), ...]}."""
+    dead_norm = {}
+    for d in atrisk_items:
+        t = d.get("title", "")
+        if t:
+            dead_norm[SJ.norm(t)] = t
+    hits = {}
+    for o in orders:
+        buyer = (o.get("name", "") or o.get("email", ""), o.get("email", ""))
+        if not buyer[1]:
+            continue
+        for it in o.get("items", []):
+            k = SJ.norm(it.get("title", ""))
+            if k in dead_norm:
+                hits.setdefault(dead_norm[k], set()).add(buyer)
+    return {t: sorted(v) for t, v in hits.items()}
+
+
 def crm_open_followups():
     """Every not-yet-recovered follow-up across all contacts, for the queue."""
     out = []
