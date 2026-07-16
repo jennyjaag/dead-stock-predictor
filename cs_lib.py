@@ -10,6 +10,7 @@ live here that weren't already in shopify_join / master_load / buy_plan_view.
 import io
 import json
 import os
+from contextlib import contextmanager
 from datetime import date, timedelta
 
 import altair as alt
@@ -78,6 +79,45 @@ def add_message(store, text, sender="you"):
 
 def inject_css():
     st.markdown(CSS, unsafe_allow_html=True)
+
+
+# A cute little horse that canters across the screen while something is loading.
+# The CSS animation runs in the browser, so it keeps moving even while Python is
+# busy fetching from Shopify. (Apple's 🐎 faces left, so it canters right→left.)
+_HORSE_HTML = """
+<div style="text-align:center;padding:22px 0">
+  <div style="position:relative;height:60px;max-width:520px;margin:0 auto;overflow:hidden;
+              border-bottom:3px dashed #cdb89a">
+    <div class="eq-horse">🐎</div>
+  </div>
+  <div style="margin-top:12px;color:#1F5A43;font-weight:600;font-size:15px">%MSG%</div>
+  <style>
+    .eq-horse{position:absolute;bottom:6px;left:100%;font-size:44px;will-change:left,transform;
+      animation:eqcanter 2.4s cubic-bezier(.4,0,.6,1) infinite}
+    @keyframes eqcanter{
+      0%{left:100%;transform:translateY(0) rotate(-2deg)}
+      25%{transform:translateY(-11px) rotate(3deg)}
+      50%{transform:translateY(0) rotate(-2deg)}
+      75%{transform:translateY(-8px) rotate(3deg)}
+      100%{left:-70px;transform:translateY(0) rotate(-2deg)}
+    }
+  </style>
+</div>
+"""
+
+
+@contextmanager
+def horse_loading(message="Loading…"):
+    """Show the cantering horse while the wrapped block runs, then clear it.
+
+    Use like st.spinner:  with cs_lib.horse_loading("Loading your stock…"): ...
+    """
+    ph = st.empty()
+    ph.markdown(_HORSE_HTML.replace("%MSG%", message), unsafe_allow_html=True)
+    try:
+        yield
+    finally:
+        ph.empty()
 
 
 def _auth_users():

@@ -18,7 +18,7 @@ with top[0]:
     if SA.configured():
         if st.button("🔄  Sync customers from Shopify", type="primary", use_container_width=True):
             try:
-                with st.spinner("Pulling your customers from Shopify…"):
+                with cs_lib.horse_loading("Cantering off to round up your customers…"):
                     custs = SA.load_customers_api()
                 n = cs_lib.crm_sync_shopify(custs)
                 st.success("Synced {} customers from Shopify.".format(n))
@@ -70,7 +70,7 @@ if SA.configured():
     lc = st.columns([1, 3])
     if lc[0].button("📦  Load purchase history", use_container_width=True):
         try:
-            with st.spinner("Reading recent orders…"):
+            with cs_lib.horse_loading("Trotting through your recent orders…"):
                 st.session_state["crm_orders"] = SA.load_orders_detailed()
             orders = st.session_state["crm_orders"]
             st.success("Loaded {} recent orders.".format(len(orders)))

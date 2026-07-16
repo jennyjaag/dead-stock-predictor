@@ -100,7 +100,7 @@ query($cursor: String) {
 """
 
 
-@st.cache_data(ttl=900, show_spinner=False)
+@st.cache_data(ttl=3600, show_spinner=False)
 def load_products_api():
     prod = {}
     cursor = None
@@ -174,7 +174,7 @@ query($cursor: String, $q: String!) {
 """
 
 
-@st.cache_data(ttl=900, show_spinner=False)
+@st.cache_data(ttl=3600, show_spinner=False)
 def load_sales_api(days=365):
     """Sum units sold per product title over the trailing `days`.
 
@@ -228,7 +228,7 @@ query($cursor: String) {
 """
 
 
-@st.cache_data(ttl=900, show_spinner=False)
+@st.cache_data(ttl=3600, show_spinner=False)
 def load_customers_api():
     """Every customer as a CRM-ready dict, biggest spenders first.
 
@@ -291,7 +291,7 @@ query($cursor: String, $q: String!) {
 """
 
 
-@st.cache_data(ttl=900, show_spinner=False)
+@st.cache_data(ttl=3600, show_spinner=False)
 def load_orders_detailed(days=365):
     """Recent orders with customer email + line items — for per-customer purchase
     history and dead-stock clear-out targeting. Same 60-day scope caveat as sales."""

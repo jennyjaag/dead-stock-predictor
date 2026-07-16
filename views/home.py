@@ -17,7 +17,7 @@ if not cs_lib.has_data():
     if SA.configured() and not st.session_state.get("_live_autoload_done"):
         st.session_state["_live_autoload_done"] = True
         try:
-            with st.spinner("Loading your live Shopify stock…"):
+            with cs_lib.horse_loading("Cantering off to fetch your live Shopify stock…"):
                 prod, sales = SA.fetch()
             if prod:
                 cs_lib.set_data(SJ.compute(prod, sales), "shopify",
@@ -63,7 +63,7 @@ if not cs_lib.has_data():
 
     try:
         if connect and shop_domain and shop_token:
-            with st.spinner("Connecting to Shopify and pulling your products & sales…"):
+            with cs_lib.horse_loading("Connecting to Shopify and pulling your products & sales…"):
                 prod, sales = SC.fetch(shop_domain, shop_token)
                 r = SJ.compute(prod, sales)
             cs_lib.set_data(r, "shopify", (SC._clean_domain(shop_domain), "(live Shopify API)"))
@@ -81,7 +81,7 @@ if not cs_lib.has_data():
                             ("demo_sales.csv", "demo_products.csv"))
             st.rerun()
         elif live:
-            with st.spinner("Connecting to Shopify and reading products & sales…"):
+            with cs_lib.horse_loading("Connecting to Shopify and reading products & sales…"):
                 prod, sales = SA.fetch()
             if not prod:
                 st.success("✅ Connected to {} — but this store has no products yet. "
