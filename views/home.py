@@ -1,4 +1,4 @@
-"""Home — landing page: first-run upload/demo/live prompt, or the dashboard + jump-back-in."""
+"""Home — landing page: first-run auto-load/upload/demo/live prompt, or the dashboard."""
 
 import streamlit as st
 
@@ -7,9 +7,24 @@ import shopify_join as SJ
 import shopify_api as SA
 
 # ---------------------------------------------------------------------------
-# First run — no data yet: show the upload area + demo + live-Shopify options
+# First run — no data yet
 # ---------------------------------------------------------------------------
 if not cs_lib.has_data():
+
+    # Auto-load LIVE Shopify stock on first visit when a connection is configured,
+    # so a logged-in user lands straight on their live stock dashboard.
+    if SA.configured() and not st.session_state.get("_live_autoload_done"):
+        st.session_state["_live_autoload_done"] = True
+        try:
+            with st.spinner("Loading your live Shopify stock…"):
+                prod, sales = SA.fetch()
+            if prod:
+                cs_lib.set_data(SJ.compute(prod, sales), "shopify",
+                                (SA.store_label(), "live Shopify API"))
+                st.rerun()
+        except Exception:
+            pass  # fall through to the manual chooser below
+
     cs_lib.page_title("Welcome to EquiSphere",
                       "Load your shop's data to see what's turning into dead stock — and what to buy instead.")
     tab_csv, tab_master = st.tabs(["📄  Two Shopify CSVs", "📊  One master file (xlsx)"])
@@ -98,6 +113,6 @@ with j[2]:
 st.divider()
 if st.button("↻  Load different data"):
     for key in ["data", "kind", "names", "snapshotted", "freed_val",
-                "home_sales", "home_prod", "home_master"]:
+                "home_sales", "home_prod", "home_master", "_live_autoload_done"]:
         st.session_state.pop(key, None)
     st.rerun()
